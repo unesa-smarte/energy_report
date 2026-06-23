@@ -26,13 +26,15 @@ const DAFTAR_PERIODE_TAGIHAN = {
         { value: "mus_Mei_26", label: "Mei 2026 (Mustopo)" },
         { value: "mus_Juni_26", label: "Juni 2026 (Mustopo)" }
     ],
-    "GABUNGAN": [
-        { value: "total_Januari_2026", label: "Gabungan 3 Kampus (Januari 2026)" },
-        { value: "total_Februari_2026", label: "Gabungan 3 Kampus (Februari 2026)" },
-        { value: "total_Maret_2026", label: "Gabungan 3 Kampus (Maret 2026)" },
-        { value: "total_April_2026", label: "Gabungan 3 Kampus (April 2026)" },
-        { value: "total_Mei_2026", label: "Gabungan 3 Kampus (Mei 2026)" },
-        { value: "total_Juni_2026", label: "Gabungan 3 Kampus (Juni 2026)" },
-        { value: "tahunan_2026", label: "Total Rekap Tahunan 2026" }
+    "GABUNGAN":[
+        // PENTING: Pisahkan dengan koma file-file yang mau digabung secara otomatis
+        { value: "lidah_Januari_26,ktt_Januari_26,mus_Januari_26", label: "🌍 Total Gabungan 3 Kampus (Januari 2026)" },
+        { value: "lidah_Februari_26,ktt_Februari_26,mus_Februari_26", label: "🌍 Total Gabungan 3 Kampus (Februari 2026)" },
+        { value: "lidah_Maret_26,ktt_Maret_26,mus_Maret_26", label: "🌍 Total Gabungan 3 Kampus (Maret 2026)" },
+        { value: "lidah_April_26,ktt_April_26,mus_April_26", label: "🌍 Total Gabungan 3 Kampus (April 2026)" },
+        { value: "lidah_Mei_26,ktt_Mei_26,mus_Mei_26", label: "🌍 Total Gabungan 3 Kampus (Mei2026)" },
+        { value: "lidah_Juni_26,ktt_Juni_26,mus_Juni_26", label: "🌍 Total Gabungan 3 Kampus (Juni 2026)" },
+        { value: "lidah_Januari_26,lidah_Februari_26,lidah_Maret_26,lidah_April_26,lidah_Mei_26,lidah_Juni_26,ktt_Januari_26,ktt_Februari_26,ktt_Maret_26,ktt_April_26,ktt_Mei_26.ktt_Juni_26,mus_Januari_26,mus_Februari_26,mus_Maret_26,mus_April_26,mus_Mei_26,mus_Juni_26", label: "📊 Total Rekap Tahunan 2026 (Semua Data)" }
+    
     ]
 };
