@@ -6,6 +6,7 @@
     <title>Dashboard Audit Energi & Karbon Unesa</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
     <style>
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .card { box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: none; border-radius: 12px; margin-bottom: 25px; }
@@ -45,9 +46,11 @@
             <div class="col-md-2">
                 <label class="form-label fw-bold"><i class="fa-solid fa-ruler-combined text-success"></i> Est. Luas Area (m²)</label>
                 <input type="number" id="totalArea" class="form-control fw-bold" value="65000" min="1" onchange="renderDashboard()">
+                
             </div>
             
             <div class="col-md-2 text-end">
+                <button class="btn btn-dark fw-bold" onclick="bukaModalTren()"><i class="fa-solid fa-chart-line text-warning me-2"></i> Tren Bulanan 2026</button>
                 <a href="simulasi.html" class="btn btn-warning btn-sm fw-bold text-dark mt-3"><i class="fa-solid fa-sliders"></i> Simulator Load Shift</a>
                 <a href="index.html" class="btn btn-outline-secondary fw-bold mt-4"><i class="fa-solid fa-arrow-left"></i> Kembali</a>
             </div>
@@ -127,12 +130,158 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="config.js"></script>
 
 <script>
     let databaseGedung = [];
     let currentCharts = {};
     let gedungSelection = {};
+
+    let trenChartInstance = null;
+
+async function bukaModalTren() {
+    // Tampilkan Modal menggunakan Bootstrap
+    const modalEl = new bootstrap.Modal(document.getElementById('modalTrenBulanan'));
+    modalEl.show();
+
+    const loadingEl = document.getElementById('loadingTren');
+    const containerEl = document.getElementById('canvasContainer');
+    
+    loadingEl.style.display = 'block';
+    containerEl.style.display = 'none';
+
+    // Definisikan susunan bulan untuk sumbu X
+    const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    
+    // Siapkan wadah data 12 bulan (Jan - Des)
+    let totalKwhLwbp = Array(12).fill(0);
+    let totalKwhWbp = Array(12).fill(0);
+    let totalBiayaBulanan = Array(12).fill(0);
+
+    try {
+        // Ambil list file gabungan/tahunan dari config.js
+        const filesGabungan = DAFTAR_PERIODE_TAGIHAN.GABUNGAN || [];
+
+        for (let periode of filesGabungan) {
+            // Ambil indeks bulan (0 untuk Jan, 11 untuk Des) berdasarkan label atau logika penamaan value
+            // Asumsi value file berformat seperti '2026_01_gabungan', kita ekstrak angka bulannya
+            let segmen = periode.value.split('_');
+            let indexBulan = parseInt(segmen[1]) - 1; // Mendapatkan index 0-11
+            
+            if (isNaN(indexBulan) || indexBulan < 0 || indexBulan > 11) continue;
+
+            const listFilesToFetch = periode.value.split(',');
+            
+            for (let file of listFilesToFetch) {
+                const response = await fetch(`data_tagihan/${file.trim()}.json`);
+                if (!response.ok) continue; // Skip jika file tidak ditemukan
+                
+                const dataJson = await response.json();
+                
+                dataJson.forEach(item => {
+                    let lwbp = parseInt(item["kWh LWBP"]) || 0;
+                    let wbp = parseInt(item["kWh WBP"]) || 0;
+                    let biaya = parseInt(item["Total Tagihan"]) || 0;
+
+                    totalKwhLwbp[indexBulan] += lwbp;
+                    totalKwhWbp[indexBulan] += wbp;
+                    totalBiayaBulanan[indexBulan] += biaya;
+                });
+            }
+        }
+
+        // Render Grafik menggunakan Chart.js
+        const ctx = document.getElementById('chartTrenBulanan').getContext('2d');
+        
+        if (trenChartInstance) {
+            trenChartInstance.destroy(); // Hancurkan chart lama jika ada agar tidak tumpang tindih
+        }
+
+        trenChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: namaBulan,
+                datasets: [
+                    {
+                        label: 'Total kWh LWBP ☀️',
+                        data: totalKwhLwbp,
+                        backgroundColor: '#1e3c72',
+                        yAxisID: 'yKwh',
+                        order: 2
+                    },
+                    {
+                        label: 'Total kWh WBP 🌙',
+                        data: totalKwhWbp,
+                        backgroundColor: '#fd7e14',
+                        yAxisID: 'yKwh',
+                        order: 2
+                    },
+                    {
+                        label: 'Total Biaya (Rp) 💰',
+                        data: totalBiayaBulanan,
+                        type: 'line',
+                        borderColor: '#dc3545',
+                        backgroundColor: '#dc3545',
+                        borderWidth: 3,
+                        pointRadius: 4,
+                        fill: false,
+                        yAxisID: 'yRupiah',
+                        order: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        grid: { display: false }
+                    },
+                    yKwh: {
+                        type: 'linear',
+                        position: 'left',
+                        title: { display: true, text: 'Konsumsi Energi (kWh)', font: { weight: 'bold' } },
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                        ticks: {
+                            callback: function(value) { return value.toLocaleString('id-ID') + ' kWh'; }
+                        }
+                    },
+                    yRupiah: {
+                        type: 'linear',
+                        position: 'right',
+                        title: { display: true, text: 'Total Pengeluaran (Rp)', font: { weight: 'bold' } },
+                        grid: { display: false }, // Agar gridlines tidak tabrakan dengan yKwh
+                        ticks: {
+                            callback: function(value) { return 'Rp ' + (value / 1000000).toFixed(0) + ' Jt'; }
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (context.dataset.type === 'line') {
+                                    return label + ': Rp ' + context.raw.toLocaleString('id-ID');
+                                }
+                                return label + ': ' + context.raw.toLocaleString('id-ID') + ' kWh';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        loadingEl.style.display = 'none';
+        containerEl.style.display = 'block';
+
+    } catch (error) {
+        console.error("Gagal memuat tren bulanan:", error);
+        alert("Terjadi kesalahan saat memproses grafik tren.");
+        loadingEl.style.display = 'none';
+    }
+}
 
     // Menghasilkan menu Dropdown dari config.js
     function generateDropdownOptions() {
@@ -408,5 +557,30 @@
         loadDataDariJson();        
     });
 </script>
+
+<div class="modal fade" id="modalTrenBulanan" tabindex="-1" aria-labelledby="modalTrenLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="modalTrenLabel"><i class="fa-solid fa-chart-column text-warning me-2"></i> Analisis Tren Konsumsi & Biaya Bulanan (Gabungan 3 Kampus) — 2026</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-light position-relative">
+                <div id="loadingTren" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <strong class="ms-2 d-block mt-2">Mengompilasi Data Multi-Periode dari JSON...</strong>
+                </div>
+                <div id="canvasContainer" style="display:none; height: 450px;">
+                    <canvas id="chartTrenBulanan"></canvas>
+                </div>
+            </div>
+            <div class="modal-footer bg-white">
+                <small class="text-muted me-auto"><i class="fa-solid fa-circle-info"></i> Sumbu Y Kiri: Konsumsi (kWh) | Sumbu Y Kanan: Total Biaya (Rupiah)</small>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+    
 </body>
 </html>
