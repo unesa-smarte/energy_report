@@ -28,29 +28,17 @@
     <div class="card p-3 mb-4 position-relative">
         <div class="row g-3 align-items-center">
             
-            <!-- Dropdown otomatis terisi dari config.js -->
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <label class="form-label fw-bold"><i class="fa-solid fa-calendar-days text-warning"></i> Pilih Periode Tagihan</label>
                 <select id="periodSelector" class="form-select fw-bold border-warning" onchange="loadDataDariJson()">
-                    <!-- Diisi otomatis oleh JavaScript -->
-                </select>
-            </div>
-
-            <div class="col-md-3">
-                <label class="form-label fw-bold"><i class="fa-solid fa-map-location-dot text-primary"></i> Filter Wilayah Internal</label>
-                <select id="regionFilter" class="form-select fw-bold text-primary" onchange="resetSelectionAndRender()">
-                    <option value="SEMUA" selected>🌍 Semua yang Ada di File</option>
-                    <option value="LIDAH_WETAN">🏢 Wilayah Lidah Wetan</option>
-                    <option value="KETINTANG">🏫 Wilayah Ketintang</option>
-                    <option value="MUSTOPO">🏛️ Wilayah Mustopo</option>
-                </select>
+                    </select>
             </div>
             
-            <div class="col-md-2">
-                <label class="form-label fw-bold"><i class="fa-solid fa-sliders text-secondary"></i> Mode Tampilan</label>
+            <div class="col-md-4">
+                <label class="form-label fw-bold"><i class="fa-solid fa-sliders text-secondary"></i> Mode Tampilan Dashboard</label>
                 <select id="viewMode" class="form-select fw-bold" onchange="toggleViewMode()">
-                    <option value="summary" selected>📊 Ringkasan</option>
-                    <option value="per_gedung">🔍 Detail Per Gedung</option>
+                    <option value="summary" selected>📊 Ringkasan Beban & Temuan Audit</option>
+                    <option value="per_gedung">🔍 Detail Penggunaan LWBP vs WBP</option>
                 </select>
             </div>
             
@@ -68,7 +56,6 @@
         </div>
     </div>
 
-    <!-- Kotak Informasi Utama -->
     <div class="row mb-2">
         <div class="col-md-3">
             <div class="card p-3 metric-card bg-white" style="border-left-color: #3498db;">
@@ -96,7 +83,6 @@
         </div>
     </div>
 
-    <!-- Section Ringkasan -->
     <div id="summarySection">
         <div class="row">
             <div class="col-md-8">
@@ -114,7 +100,6 @@
         </div>
     </div>
 
-    <!-- Section Detail -->
     <div id="detailSection" class="d-none">
         <div class="row">
             <div class="col-12">
@@ -141,7 +126,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- Memanggil File Konfigurasi -->
 <script src="config.js"></script>
 
 <script>
@@ -149,7 +133,7 @@
     let currentCharts = {};
     let gedungSelection = {};
 
-    // Membuat menu Dropdown terisi secara otomatis berdasarkan data dari config.js
+    // Menghasilkan menu Dropdown dari config.js
     function generateDropdownOptions() {
         const selector = document.getElementById('periodSelector');
         selector.innerHTML = ''; 
@@ -175,7 +159,7 @@
         });
     }
 
-// Mengambil data JSON secara dinamis (Mendukung Single File & Multi-File Gabungan)
+    // Mengambil data JSON secara dinamis
     async function loadDataDariJson() {
         const fileKeyRaw = document.getElementById('periodSelector').value;
         const overlay = document.getElementById('loadingOverlay');
@@ -189,11 +173,9 @@
         overlay.style.display = 'flex';
 
         try {
-            // Pecah fileKey berdasarkan tanda koma jika berupa menu gabungan
             const listFiles = fileKeyRaw.split(',');
             let rawCombinedData = [];
 
-            // Lakukan perulangan (loop) untuk mengambil semua file JSON yang diminta
             for (let file of listFiles) {
                 const response = await fetch(`data_tagihan/${file.trim()}.json`);
                 if (!response.ok) {
@@ -201,14 +183,12 @@
                 }
                 const dataData = await response.json();
                 
-                // Beri penanda wilayah internal otomatis pada data sebelum digabung
                 const dataWithRegion = dataData.map(item => {
                     let wilayahDeteksi = "SEMUA";
                     if (file.toLowerCase().includes("lidah")) wilayahDeteksi = "LIDAH_WETAN";
                     else if (file.toLowerCase().includes("ktt")) wilayahDeteksi = "KETINTANG";
                     else if (file.toLowerCase().includes("mus")) wilayahDeteksi = "MUSTOPO";
                     
-                    // Kembalikan objek data yang sudah distandarisasi kuncinya
                     return {
                         idpel: item["ID Pelanggan"] || "Tanpa ID",
                         nama: item["Nama Pelanggan"] || item["File Name"] || "Gedung Tidak Diketahui",
@@ -219,39 +199,29 @@
                     };
                 });
 
-                // Masukkan ke array penampung gabungan
                 rawCombinedData = rawCombinedData.concat(dataWithRegion);
             }
 
-            // --- PROSES KONSOLIDASI (AGAR GEDUNG YANG SAMA DI BULAN BERBEDA JADI SATU BARIS) ---
-            // Ini sangat berguna untuk Menu Tahunan agar grafik tidak memanjang berulang-ulang
             let consolidatedMap = {};
-            
             rawCombinedData.forEach(item => {
-                // Gunakan ID Pelanggan atau Nama sebagai kunci unik konsolidasi
                 let key = item.idpel !== "Tanpa ID" ? item.idpel : item.nama;
-                
                 if (consolidatedMap[key]) {
-                    // Jika gedung sudah terdaftar sebelumnya, akumulasikan nilainya
                     consolidatedMap[key].lwbp += item.lwbp;
                     consolidatedMap[key].wbp += item.wbp;
                     consolidatedMap[key].tagihan += item.tagihan;
                 } else {
-                    // Jika belum ada, buat data baru (clone objek)
                     consolidatedMap[key] = { ...item };
                 }
             });
 
-            // Ubah kembali objek konsolidasi menjadi array untuk database dashboard
             databaseGedung = Object.values(consolidatedMap).map((item, index) => {
-                return {
-                    id: index + 1,
-                    ...item
-                };
+                return { id: index + 1, ...item };
             });
 
-            // Render ulang grafik dan dashboard
-            resetSelectionAndRender();
+            // Langsung inisialisasi status pilihan dan tampilkan data
+            initSelectionStates();
+            renderGedungSelector();
+            renderDashboard();
 
         } catch (error) {
             console.error("Gagal memuat visualisasi data:", error);
@@ -280,26 +250,14 @@
         renderDashboard();
     }
 
-    function resetSelectionAndRender() {
-        initSelectionStates();
-        renderGedungSelector();
-        renderDashboard();
-    }
-
     function renderGedungSelector() {
-        const filter = document.getElementById('regionFilter').value;
         const container = document.getElementById('gedungSelectorContainer');
         container.innerHTML = '';
-
-        let dataFilter = databaseGedung;
-        if (filter !== "SEMUA") {
-            dataFilter = databaseGedung.filter(item => item.wilayah === filter);
-        }
 
         const rowDiv = document.createElement('div');
         rowDiv.className = 'row text-dark';
 
-        dataFilter.forEach(g => {
+        databaseGedung.forEach(g => {
             const isChecked = gedungSelection[g.id] !== false;
             const col = document.createElement('div');
             col.className = 'col-xl-3 col-md-4 col-sm-6 mb-2';
@@ -323,13 +281,7 @@
     }
 
     function checkAllGedung(status) {
-        const filter = document.getElementById('regionFilter').value;
-        let dataFilter = databaseGedung;
-        if (filter !== "SEMUA") {
-            dataFilter = databaseGedung.filter(item => item.wilayah === filter);
-        }
-        
-        dataFilter.forEach(g => {
+        databaseGedung.forEach(g => {
             gedungSelection[g.id] = status;
         });
 
@@ -340,15 +292,8 @@
     }
 
     function renderDashboard() {
-        const filter = document.getElementById('regionFilter').value;
         let luasArea = parseFloat(document.getElementById('totalArea').value) || 1;
-
-        let dataProses = databaseGedung;
-        if (filter !== "SEMUA") {
-            dataProses = databaseGedung.filter(item => item.wilayah === filter);
-        }
-
-        let dataTerpilih = dataProses.filter(item => gedungSelection[item.id] !== false);
+        let dataTerpilih = databaseGedung.filter(item => gedungSelection[item.id] !== false);
 
         let totalLwbp = 0, totalWbp = 0, totalCost = 0;
         dataTerpilih.forEach(d => {
