@@ -175,12 +175,12 @@
         });
     }
 
-    // Mengambil data JSON dari folder 'data_tagihan/' secara dinamis
+// Mengambil data JSON secara dinamis (Mendukung Single File & Multi-File Gabungan)
     async function loadDataDariJson() {
-        const fileKey = document.getElementById('periodSelector').value;
+        const fileKeyRaw = document.getElementById('periodSelector').value;
         const overlay = document.getElementById('loadingOverlay');
         
-        if(!fileKey) return;
+        if(!fileKeyRaw) return;
 
         const selectorEl = document.getElementById('periodSelector');
         const textAktif = selectorEl.options[selectorEl.selectedIndex].text;
@@ -189,36 +189,73 @@
         overlay.style.display = 'flex';
 
         try {
-            const response = await fetch(`data_tagihan/${fileKey}.json`);
-            
-            if (!response.ok) {
-                throw new Error(`File JSON data_tagihan/${fileKey}.json tidak ditemukan.`);
-            }
-            
-            const rawData = await response.json();
-            
-            databaseGedung = rawData.map((item, index) => {
-                let wilayahDeteksi = "SEMUA";
-                if (fileKey.includes("lidah")) wilayahDeteksi = "LIDAH_WETAN";
-                else if (fileKey.includes("ktt")) wilayahDeteksi = "KETINTANG";
-                else if (fileKey.includes("mus")) wilayahDeteksi = "MUSTOPO";
+            // Pecah fileKey berdasarkan tanda koma jika berupa menu gabungan
+            const listFiles = fileKeyRaw.split(',');
+            let rawCombinedData = [];
+
+            // Lakukan perulangan (loop) untuk mengambil semua file JSON yang diminta
+            for (let file o f listFiles) {
+                const response = await fetch(`data_tagihan/${file.trim()}.json`);
+                if (!response.ok) {
+                    throw new Error(`File JSON data_tagihan/${file.trim()}.json tidak ditemukan.`);
+                }
+                const dataData = await response.json();
                 
+                // Beri penanda wilayah internal otomatis pada data sebelum digabung
+                const dataWithRegion = dataData.map(item => {
+                    let wilayahDeteksi = "SEMUA";
+                    if (file.toLowerCase().includes("lidah")) wilayahDeteksi = "LIDAH_WETAN";
+                    else if (file.toLowerCase().includes("ktt")) wilayahDeteksi = "KETINTANG";
+                    else if (file.toLowerCase().includes("mus")) wilayahDeteksi = "MUSTOPO";
+                    
+                    // Kembalikan objek data yang sudah distandarisasi kuncinya
+                    return {
+                        idpel: item["ID Pelanggan"] || "Tanpa ID",
+                        nama: item["Nama Pelanggan"] || item["File Name"] || "Gedung Tidak Diketahui",
+                        wilayah: item["Wilayah"] || wilayahDeteksi, 
+                        lwbp: parseInt(item["kWh LWBP"]) || 0,
+                        wbp: parseInt(item["kWh WBP"]) || 0,
+                        tagihan: parseInt(item["Total Tagihan"]) || 0
+                    };
+                });
+
+                // Masukkan ke array penampung gabungan
+                rawCombinedData = rawCombinedData.concat(dataWithRegion);
+            }
+
+            // --- PROSES KONSOLIDASI (AGAR GEDUNG YANG SAMA DI BULAN BERBEDA JADI SATU BARIS) ---
+            // Ini sangat berguna untuk Menu Tahunan agar grafik tidak memanjang berulang-ulang
+            let consolidatedMap = {};
+            
+            rawCombinedData.forEach(item => {
+                // Gunakan ID Pelanggan atau Nama sebagai kunci unik konsolidasi
+                let key = item.idpel !== "Tanpa ID" ? item.idpel : item.nama;
+                
+                if (consolidatedMap[key]) {
+                    // Jika gedung sudah terdaftar sebelumnya, akumulasikan nilainya
+                    consolidatedMap[key].lwbp += item.lwbp;
+                    consolidatedMap[key].wbp += item.wbp;
+                    consolidatedMap[key].tagihan += item.tagihan;
+                } else {
+                    // Jika belum ada, buat data baru (clone objek)
+                    consolidatedMap[key] = { ...item };
+                }
+            });
+
+            // Ubah kembali objek konsolidasi menjadi array untuk database dashboard
+            databaseGedung = Object.values(consolidatedMap).map((item, index) => {
                 return {
                     id: index + 1,
-                    idpel: item["ID Pelanggan"] || "Tanpa ID",
-                    nama: item["Nama Pelanggan"] || item["File Name"] || "Gedung Tidak Diketahui",
-                    wilayah: item["Wilayah"] || wilayahDeteksi, 
-                    lwbp: parseInt(item["kWh LWBP"]) || 0,
-                    wbp: parseInt(item["kWh WBP"]) || 0,
-                    tagihan: parseInt(item["Total Tagihan"]) || 0
+                    ...item
                 };
             });
 
+            // Render ulang grafik dan dashboard
             resetSelectionAndRender();
 
         } catch (error) {
             console.error("Gagal memuat visualisasi data:", error);
-            alert(`Gagal mengambil data: ${error.message}\nPastikan file JSON sudah ada di folder data_tagihan.`);
+            alert(`Gagal menggabungkan data: ${error.message}\nPastikan semua file JSON terkait sudah di-push.`);
         } finally {
             overlay.style.display = 'none';
         }
