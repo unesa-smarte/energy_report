@@ -138,70 +138,69 @@
     let currentCharts = {};
     let gedungSelection = {};
 
-    let trenChartInstance = null;
+if (typeof window.trenChartInstance === 'undefined') {
+    window.trenChartInstance = null;
+}
 
 async function bukaModalTren() {
     const loadingEl = document.getElementById('loadingTren');
     const containerEl = document.getElementById('canvasContainer');
     
-    loadingEl.style.display = 'block';
-    containerEl.style.display = 'none';
+    if (loadingEl) loadingEl.style.display = 'block';
+    if (containerEl) containerEl.style.display = 'none';
 
-    // Label untuk sumbu X grafik
-    const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni"];
+    // 1. Sediakan master nama bulan penuh 12 bulan
+    const masterBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     
-    // Siapkan wadah data kosong untuk 6 bulan (Jan - Jun)
-    let totalKwhLwbp = Array(6).fill(0);
-    let totalKwhWbp = Array(6).fill(0);
-    let totalBiayaBulanan = Array(6).fill(0);
+    // Siapkan wadah data kosong untuk 12 bulan penuh
+    let totalKwhLwbp = Array(12).fill(0);
+    let totalKwhWbp = Array(12).fill(0);
+    let totalBiayaBulanan = Array(12).fill(0);
+    
+    // Variabel untuk mencatat bulan tertinggi yang ditemukan di dalam config
+    let bulanMaksimalTerdeteksi = 0; 
 
     try {
-        const filesGabungan = DAFTAR_PERIODE_TAGIHAN.GABUNGAN || [];
-        
-        // 1. Ambil KUNCI elemen terakhir dari array GABUNGAN
+        const filesGabungan = DAFTAR_PERIODE_TAGIHAN.GABUNGAN;
         const elemenTerakhir = filesGabungan[filesGabungan.length - 1];
-        
-        if (!elemenTerakhir || !elemenTerakhir.value) {
-            throw new Error("Data rekap tahunan pada config.js tidak ditemukan.");
-        }
-
-        // 2. Pecah string value raksasa menjadi array nama file individu
         const listFilesToFetch = elemenTerakhir.value.split(',');
 
-        // 3. Lakukan fetch secara paralel/bergantian untuk semua file yang terdaftar
         for (let file of listFilesToFetch) {
             let namaFileBersih = file.trim();
             if (!namaFileBersih) continue;
 
-            // Tambahkan ekstensi .json jika belum ada
             if (!namaFileBersih.endsWith('.json')) {
                 namaFileBersih += '.json';
             }
 
-            // Tentukan index bulan (0-5) berdasarkan deteksi kata di dalam NAMA FILE-nya
+            // 2. Deteksi bulan (0-11) dengan fleksibel
             let indexBulan = -1;
-            let fileUpper = namaFileBersih.toUpperCase();
+            if (/januari/i.test(namaFileBersih)) indexBulan = 0;
+            else if (/februari/i.test(namaFileBersih)) indexBulan = 1;
+            else if (/maret/i.test(namaFileBersih)) indexBulan = 2;
+            else if (/april/i.test(namaFileBersih)) indexBulan = 3;
+            else if (/mei/i.test(namaFileBersih)) indexBulan = 4;
+            else if (/juni/i.test(namaFileBersih)) indexBulan = 5;
+            else if (/juli/i.test(namaFileBersih)) indexBulan = 6;
+            else if (/agustus/i.test(namaFileBersih)) indexBulan = 7;
+            else if (/september/i.test(namaFileBersih)) indexBulan = 8;
+            else if (/oktober/i.test(namaFileBersih)) indexBulan = 9;
+            else if (/november/i.test(namaFileBersih)) indexBulan = 10;
+            else if (/desember/i.test(namaFileBersih)) indexBulan = 11;
 
-            if (fileUpper.includes("JANUARI")) indexBulan = 0;
-            else if (fileUpper.includes("FEBRUARI")) indexBulan = 1;
-            else if (fileUpper.includes("MARET")) indexBulan = 2;
-            else if (fileUpper.includes("APRIL")) indexBulan = 3;
-            else if (fileUpper.includes("MEI")) indexBulan = 4;
-            else if (fileUpper.includes("JUNI")) indexBulan = 5;
-
-            // Jika file tidak cocok dengan bulan manapun, lewati
             if (indexBulan === -1) continue;
 
-            // Ambil file dari folder data_tagihan/
-            const response = await fetch(`data_tagihan/${namaFileBersih}`);
-            if (!response.ok) {
-                console.warn(`File data_tagihan/${namaFileBersih} tidak ditemukan.`);
-                continue; 
+            // Catat batas bulan tertinggi yang ada datanya di config saat ini
+            if (indexBulan > bulanMaksimalTerdeteksi) {
+                bulanMaksimalTerdeteksi = indexBulan;
             }
+
+            // Ambil data JSON
+            const response = await fetch(`data_tagihan/${namaFileBersih}`);
+            if (!response.ok) continue; 
             
             const dataJson = await response.json();
-
-            // akumulasikan data ke dalam bulan yang sesuai
+            
             dataJson.forEach(item => {
                 let lwbp = parseInt(item["kWh LWBP"]) || parseInt(item["LWBP"]) || 0;
                 let wbp = parseInt(item["kWh WBP"]) || parseInt(item["WBP"]) || 0;
@@ -213,34 +212,44 @@ async function bukaModalTren() {
             });
         }
 
-        // --- RENDER KE CHART.JS ---
+        // 3. POTONG DATA SECARA DINAMIS (Hanya tampilkan bulan yang aktif di config)
+        // Jika data baru sampai Juni (index 5), maka slice(0, 6) akan mengambil Januari - Juni
+        let batasSlice = bulanMaksimalTerdeteksi + 1;
+        
+        const labelSumbuX = masterBulan.slice(0, batasSlice);
+        const dataLwbp = totalKwhLwbp.slice(0, batasSlice);
+        const dataWbp = totalKwhWbp.slice(0, batasSlice);
+        const dataBiaya = totalBiayaBulanan.slice(0, batasSlice);
+
+        // --- PROSES RENDER CHART.JS ---
         const ctx = document.getElementById('chartTrenBulanan').getContext('2d');
-        if (trenChartInstance) {
-            trenChartInstance.destroy();
+        
+        if (window.trenChartInstance) {
+            window.trenChartInstance.destroy();
         }
 
-        trenChartInstance = new Chart(ctx, {
+        window.trenChartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: namaBulan, 
+                labels: labelSumbuX, 
                 datasets: [
                     {
                         label: 'Total kWh LWBP ☀️',
-                        data: totalKwhLwbp,
+                        data: dataLwbp,
                         backgroundColor: '#1e3c72',
                         yAxisID: 'yKwh',
                         order: 2
                     },
                     {
                         label: 'Total kWh WBP 🌙',
-                        data: totalKwhWbp,
+                        data: dataWbp,
                         backgroundColor: '#fd7e14',
                         yAxisID: 'yKwh',
                         order: 2
                     },
                     {
                         label: 'Total Biaya (Rp) 💰',
-                        data: totalBiayaBulanan,
+                        data: dataBiaya,
                         type: 'line',
                         borderColor: '#dc3545',
                         backgroundColor: '#dc3545',
@@ -274,13 +283,12 @@ async function bukaModalTren() {
             }
         });
 
-        loadingEl.style.display = 'none';
-        containerEl.style.display = 'block';
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (containerEl) containerEl.style.display = 'block';
 
     } catch (error) {
-        console.error("Gagal memuat tren bulanan:", error);
-        alert("Terjadi kesalahan saat memproses data grafik: " + error.message);
-        loadingEl.style.display = 'none';
+        console.error("Error utama:", error);
+        if (loadingEl) loadingEl.style.display = 'none';
     }
 }
     // Menghasilkan menu Dropdown dari config.js
