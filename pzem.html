@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Monitoring Energi Gedung - Mei 2026</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: none; margin-bottom: 25px; border-radius: 10px; }
+        .header-title { color: #2c3e50; font-weight: 700; }
+        .chart-container { position: relative; height: 280px; width: 100%; }
+        .metric-card { border-left: 5px solid #2ecc71; border-radius: 6px; }
+        .hidden-section { display: none; }
+        .display-block { display: block; }
+    </style>
+</head>
+<body>
+
+<div class="container py-4">
+    <div class="text-center mb-4">
+        <h1 class="header-title">🏢 Dashboard Analisis Energi & Emisi Gedung</h1>
+        <p class="text-muted">Unesa Smart Energy | Analisis Data Komprehensif (On Progress)</p>
+    </div>
+
+    <div class="card p-4">
+        <form id="filterForm" class="row g-3 align-items-end" onsubmit="event.preventDefault(); applyFilter();">
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Pilihan Menu Grafik</label>
+                <select id="selectedMenu" class="form-select bg-light fw-bold text-primary" onchange="applyFilter()">
+                    <option value="Semua_Watt" selected>⚡ Semua ID (Daya - Watt)</option>
+                    <option value="Semua_Arus">🔌 Semua ID (Arus - Ampere)</option>
+                    <option value="Semua_Carbon">🍃 Semua ID (Emisi Carbon)</option>
+                    <option value="TOTAL">🏢 TOTAL Akumulasi Gedung</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-bold">Filter Rentang Waktu</label>
+                <select id="timeMode" class="form-select fw-bold text-dark" onchange="toggleDateInput()">
+                    <option value="harian" selected>📅 Harian (Per Jam)</option>
+                    <option value="full_bulan">📈 Full 1 Bulan (Mei 2026)</option>
+                </select>
+            </div>
+            <div class="col-md-2" id="tanggalContainer">
+                <label class="form-label fw-bold">Pilih Tanggal</label>
+                <input type="date" id="filterTanggal" class="form-control fw-bold text-primary" min="2026-05-01" max="2026-05-31" value="2026-05-04">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-bold">Luas Gedung (m²)</label>
+                <input type="number" id="buildingArea" class="form-control fw-bold text-success" value="5000" min="1" onchange="applyFilter()">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm py-2">🚀 Tarik Data</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="statusAlert" class="alert alert-info text-center fw-bold shadow-sm">
+        ⏳ Sedang mengunduh basis data JSON dari repositori GitHub...
+    </div>
+
+    <div id="sectionSemuaWatt" class="hidden-section">
+        <h4 class="mb-3 text-primary fw-bold text-center">Beban Daya Listrik Per Jalur (Watt)</h4>
+        <div class="row" id="containerSemuaWatt"></div>
+    </div>
+
+    <div id="sectionSemuaArus" class="hidden-section">
+        <h4 class="mb-3 text-warning fw-bold text-center">Konsumsi Arus Per Jalur (Ampere: 10A - 40A)</h4>
+        <div class="row" id="containerSemuaArus"></div>
+    </div>
+
+    <div id="sectionSemuaCarbon" class="hidden-section">
+        <h4 class="mb-3 text-success fw-bold text-center">Jejak Emisi Karbon Per Jalur (gram CO₂)</h4>
+        <div class="row" id="containerSemuaCarbon"></div>
+    </div>
+
+    <div id="sectionTotal" class="hidden-section">
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card p-3 metric-card bg-white">
+                    <small class="text-muted fw-bold">TOTAL KONSUMSI ENERGI</small>
+                    <h2 class="fw-bold my-1 text-dark"><span id="txtTotalKwh">0</span> <small class="fs-6 text-muted">kWh</small></h2>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-3 metric-card bg-white" style="border-left-color: #e67e22;">
+                    <small class="text-muted fw-bold">TOTAL JEJAK KARBON GEDUNG</small>
+                    <h2 class="fw-bold my-1 text-dark"><span id="txtTotalCarbon">0</span> <small class="fs-6 text-muted">kg CO₂</small></h2>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-3 metric-card bg-white" style="border-left-color: #9b59b6;">
+                    <small class="text-muted fw-bold">INTENSITAS EMISI KARBON (GECI)</small>
+                    <h2 class="fw-bold my-1 text-dark"><span id="txtGeci">0</span> <small class="fs-6 text-muted">kg CO₂/m²</small></h2>
+                </div>
+            </div>
+        </div>
+        <div class="card p-4">
+            <h5 class="fw-bold text-center mb-3" id="totalChartTitle">Grafik Beban Aktual Total Gedung</h5>
+            <div class="chart-container" style="height: 400px;"><canvas id="chartTotalAccumulated"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    let allMasterData = []; 
+    let activeCharts = []; 
+    let mainTotalChart = null;
+
+    // 1. Inisialisasi Elemen Grafik Kontainer 30 Sensor Meter secara Otomatis
+    const containerWatt = document.getElementById('containerSemuaWatt');
+    const containerArus = document.getElementById('containerSemuaArus');
+    const containerCarbon = document.getElementById('containerSemuaCarbon');
+    
+    for (let i = 1; i <= 30; i++) {
+        containerWatt.innerHTML += `<div class="col-12 col-md-6 mb-3"><div class="card p-3"><h6>⚡ POWER METER ID ${i} (Watt)</h6><div class="chart-container"><canvas id="chartWatt_${i}"></canvas></div></div></div>`;
+        containerArus.innerHTML += `<div class="col-12 col-md-6 mb-3"><div class="card p-3"><h6>🔌 CURRENT METER ID ${i} (Ampere)</h6><div class="chart-container"><canvas id="chartArus_${i}"></canvas></div></div></div>`;
+        containerCarbon.innerHTML += `<div class="col-12 col-md-6 mb-3"><div class="card p-3"><h6>🍃 CARBON FOOTPRINT ID ${i} (gram CO₂)</h6><div class="chart-container"><canvas id="chartCarbon_${i}"></canvas></div></div></div>`;
+    }
+
+    // Ambil Data Master JSON dari repositori lokal saat halaman pertama kali dibuka
+    window.addEventListener('DOMContentLoaded', () => {
+        fetch('./data_simulasi_kantor_mei_2026.json')
+            .then(res => {
+                if(!res.ok) throw new Error("File JSON tidak ditemukan");
+                return res.json();
+            })
+            .then(data => {
+                allMasterData = data;
+                document.getElementById('statusAlert').className = "alert alert-success text-center fw-bold shadow-sm";
+                document.getElementById('statusAlert').innerText = "✅ Database JSON Berhasil Dimuat! Silakan tentukan opsi filter dan tekan Tarik Data.";
+                applyFilter();
+            })
+            .catch(err => {
+                document.getElementById('statusAlert').className = "alert alert-danger text-center fw-bold shadow-sm";
+                document.getElementById('statusAlert').innerText = "❌ Gagal memuat database JSON. Pastikan file data_simulasi_kantor_mei_2026.json sudah di-upload sejajar dengan file index.html.";
+            });
+    });
+
+    function toggleDateInput() {
+        const mode = document.getElementById('timeMode').value;
+        const container = document.getElementById('tanggalContainer');
+        if (mode === 'full_bulan') {
+            container.style.display = 'none';
+        } else {
+            container.style.display = 'block';
+        }
+        applyFilter();
+    }
+
+    function destroyCharts() {
+        activeCharts.forEach(c => c.destroy());
+        activeCharts = [];
+        if (mainTotalChart) { mainTotalChart.destroy(); mainTotalChart = null; }
+    }
+
+    // 2. Filter & Olah Data Berdasarkan Parameter
+    function applyFilter() {
+        if (allMasterData.length === 0) return;
+        destroyCharts();
+
+        const menu = document.getElementById('selectedMenu').value;
+        const timeMode = document.getElementById('timeMode').value;
+        const tglInput = document.getElementById('filterTanggal').value;
+        const alertBox = document.getElementById('statusAlert');
+        const luasGedung = parseFloat(document.getElementById('buildingArea').value) || 1;
+
+        // Menyembunyikan seluruh seksi
+        ['sectionTotal', 'sectionSemuaWatt', 'sectionSemuaArus', 'sectionSemuaCarbon'].forEach(id => {
+            document.getElementById(id).className = "hidden-section";
+        });
+
+        let filteredData = [];
+
+        if (timeMode === 'harian') {
+            filteredData = allMasterData.filter(item => item.WAKTU_LOG.startsWith(tglInput));
+            if(filteredData.length === 0) {
+                alertBox.className = "alert alert-warning text-center fw-bold";
+                alertBox.innerText = `⚠️ Data untuk tanggal ${tglInput} tidak ditemukan di dalam database.`;
+                return;
+            }
+            alertBox.className = "alert alert-success text-center fw-bold";
+            alertBox.innerText = `✅ Menampilkan data analisis harian tanggal: ${tglInput}`;
+        } else {
+            filteredData = allMasterData; 
+            alertBox.className = "alert alert-success text-center fw-bold";
+            alertBox.innerText = `✅ Menampilkan analisis akumulasi penuh Bulan Mei 2026 (${filteredData.length} total baris data).`;
+        }
+
+        // Ambil label sumbu X unik (waktu log)
+        const labelsX = [...new Set(filteredData.map(item => timeMode === 'harian' ? item.WAKTU_LOG.split(' ')[1] : item.WAKTU_LOG))];
+        
+        // Konstanta faktor konversi karbon regional Indonesia (0.85 kg CO2 per kWh)
+        const carbonMultiplier = (0.85 / 60);
+
+        // 3. Render Grafik Sesuai Pilihan Menu
+        if (menu === "Semua_Watt") {
+            document.getElementById('sectionSemuaWatt').className = "display-block";
+            for (let id = 1; id <= 30; id++) {
+                let dataPoints = labelsX.map(x => {
+                    let d = filteredData.find(item => (timeMode === 'harian' ? item.WAKTU_LOG.split(' ')[1] : item.WAKTU_LOG) === x && item.ID === id);
+                    return d ? d["DAYA(W)"] : 0;
+                });
+                renderLineChart(`chartWatt_${id}`, labelsX, dataPoints, '#3498db', 'rgba(52, 152, 219, 0.05)', 'Watt');
+            }
+        } 
+        else if (menu === "Semua_Arus") {
+            document.getElementById('sectionSemuaArus').className = "display-block";
+            for (let id = 1; id <= 30; id++) {
+                let dataPoints = labelsX.map(x => {
+                    let d = filteredData.find(item => (timeMode === 'harian' ? item.WAKTU_LOG.split(' ')[1] : item.WAKTU_LOG) === x && item.ID === id);
+                    return d ? d["ARUS(A)"] : 0;
+                });
+                renderLineChart(`chartArus_${id}`, labelsX, dataPoints, '#f1c40f', 'rgba(241, 196, 15, 0.05)', 'Ampere');
+            }
+        }
+        else if (menu === "Semua_Carbon") {
+            document.getElementById('sectionSemuaCarbon').className = "display-block";
+            for (let id = 1; id <= 30; id++) {
+                let dataPoints = labelsX.map(x => {
+                    let d = filteredData.find(item => (timeMode === 'harian' ? item.WAKTU_LOG.split(' ')[1] : item.WAKTU_LOG) === x && item.ID === id);
+                    return d ? parseFloat((d["DAYA(W)"] * carbonMultiplier).toFixed(1)) : 0;
+                });
+                renderLineChart(`chartCarbon_${id}`, labelsX, dataPoints, '#2ecc71', 'rgba(46, 204, 113, 0.05)', 'gram CO₂');
+            }
+        }
+        else if (menu === "TOTAL") {
+            document.getElementById('sectionTotal').className = "display-block";
+            let totalKwh = 0;
+            let totalCarbonKg = 0;
+
+            document.getElementById('totalChartTitle').innerText = timeMode === 'harian' 
+                ? `Grafik Beban Akumulasi Total Gedung (Tanggal ${tglInput})` 
+                : 'Grafik Tren Konsumsi Daya Total Gedung (Mei 2026)';
+
+            let timelineTotalWatt = labelsX.map(x => {
+                let sumWatt = 0;
+                filteredData.forEach(item => {
+                    let t = timeMode === 'harian' ? item.WAKTU_LOG.split(' ')[1] : item.WAKTU_LOG;
+                    if (t === x) sumWatt += item["DAYA(W)"];
+                });
+                
+                totalKwh += (sumWatt / 1000); 
+                totalCarbonKg += ((sumWatt * carbonMultiplier) / 1000);
+                return Math.round(sumWatt);
+            });
+
+            // Kalkulasi GECI (Total Emisi Karbon / Input Luas Gedung)
+            let geci = totalCarbonKg / luasGedung;
+
+            document.getElementById("txtTotalKwh").innerText = Math.round(totalKwh).toLocaleString('id-ID');
+            document.getElementById("txtTotalCarbon").innerText = Math.round(totalCarbonKg).toLocaleString('id-ID');
+            document.getElementById("txtGeci").innerText = geci.toFixed(2).toLocaleString('id-ID');
+
+            let ctx = document.getElementById('chartTotalAccumulated').getContext('2d');
+            mainTotalChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labelsX,
+                    datasets: [{
+                        label: 'Total Beban Lantai (Watt)',
+                        data: timelineTotalWatt,
+                        borderColor: '#34495e',
+                        borderWidth: 2,
+                        pointRadius: timeMode === 'harian' ? 2 : 0,
+                        fill: true,
+                        backgroundColor: 'rgba(52, 73, 94, 0.08)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+    }
+
+    // Core Helper Generator Chart.js
+    function renderLineChart(canvasId, labels, data, color, bgColor, unit) {
+        let ctx = document.getElementById(canvasId).getContext('2d');
+        let c = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    borderColor: color,
+                    pointRadius: 0,
+                    fill: true,
+                    backgroundColor: bgColor,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) { return ` ${context.parsed.y} ${unit}`; }
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } },
+                    y: { beginAtZero: false }
+                }
+            }
+        });
+        activeCharts.push(c);
+    }
+</script>
+</body>
+</html>
