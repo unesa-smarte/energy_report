@@ -194,7 +194,7 @@
             let rawCombinedData = [];
 
             // Lakukan perulangan (loop) untuk mengambil semua file JSON yang diminta
-            for (let file o f listFiles) {
+            for (let file of listFiles) {
                 const response = await fetch(`data_tagihan/${file.trim()}.json`);
                 if (!response.ok) {
                     throw new Error(`File JSON data_tagihan/${file.trim()}.json tidak ditemukan.`);
