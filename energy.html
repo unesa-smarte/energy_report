@@ -189,10 +189,10 @@
         overlay.style.display = 'flex';
 
         try {
-            const response = await fetch(`data_tagihan/${fileKey.toLowerCase()}.json`);
+            const response = await fetch(`data_tagihan/${fileKey}.json`);
             
             if (!response.ok) {
-                throw new Error(`File JSON data_tagihan/${fileKey.toLowerCase()}.json tidak ditemukan.`);
+                throw new Error(`File JSON data_tagihan/${fileKey}.json tidak ditemukan.`);
             }
             
             const rawData = await response.json();
