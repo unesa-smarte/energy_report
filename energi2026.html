@@ -5,216 +5,233 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analisis Tren Konsumsi & Biaya Bulanan 2026</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .chart-container { position: relative; height: 500px; width: 100%; }
+        body { background-color: #f8f9fa; }
+        .chart-card { border: none; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .filter-box { background-color: #f1f3f5; padding: 12px 20px; border-radius: 10px; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
-    <div class="container py-5">
-        <div class="card bg-dark text-white p-4 mb-4 shadow">
-            <div class="d-flex align-items-center justify-content-between flex-wrap">
-                <div>
-                    <h2 class="fw-bold mb-1"><i class="fa-solid fa-chart-column text-warning me-2"></i> Tren Perjalanan Bulanan Gabungan 3 Kampus</h2>
-                    <p class="mb-0 text-muted-light opacity-75">Tahun Analisis: 2026 (Berdasarkan Tagihan Bulanan Rekening PLN)</p>
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-xl-11">
+            
+            <div class="d-flex align-items-center justify-content-between mb-4 bg-dark text-white p-3 rounded-3 shadow-sm">
+                <h4 class="mb-0 fw-bold">
+                    <i class="fa-solid fa-chart-column text-warning me-2"></i> 
+                    Analisis Tren Konsumsi & Biaya Bulanan — 2026
+                </h4>
+                <button class="btn btn-sm btn-outline-light" onclick="window.close()">
+                    <i class="fa-solid fa-xmark me-1"></i> Tutup Tab
+                </button>
+            </div>
+
+            <div class="card chart-card bg-white p-4">
+                
+                <div class="filter-box d-flex flex-wrap align-items-center gap-4">
+                    <span class="fw-bold text-secondary"><i class="fa-solid fa-filter me-1"></i> Filter Kampus:</span>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="chkLidah" checked onchange="muatGrafikTrenTahunan()">
+                        <label class="form-check-label fw-semibold" for="chkLidah">Kampus Lidah Wetan</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="chkKetintang" checked onchange="muatGrafikTrenTahunan()">
+                        <label class="form-check-label fw-semibold" for="chkKetintang">Kampus Ketintang</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="chkMustopo" checked onchange="muatGrafikTrenTahunan()">
+                        <label class="form-check-label fw-semibold" for="chkMustopo">Kampus Mustopo</label>
+                    </div>
                 </div>
-            </div>
-        </div>
 
-        <div class="card shadow border-0 p-4">
-            <div id="loadingTren" class="text-center py-5">
-                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
-                <strong class="ms-2 d-block mt-3 fs-5 text-secondary">Mengompilasi Seluruh Data JSON Periode 2026...</strong>
-            </div>
-
-            <div id="canvasContainer" style="display:none;">
-                <div class="chart-container">
+                <div id="loadingTren" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <strong class="ms-2 d-block mt-2">Mengompilasi Data Multi-Periode dari JSON...</strong>
+                </div>
+                
+                <div id="canvasContainer" style="display:none; height: 500px; position: relative;">
                     <canvas id="chartTrenBulanan"></canvas>
                 </div>
-                <div class="mt-3 text-end">
-                    <span class="badge bg-secondary p-2"><i class="fa-solid fa-circle-info me-1"></i> Sumbu Y Kiri: Batang kWh (LWBP & WBP)</span>
-                    <span class="badge bg-danger p-2 ms-2"><i class="fa-solid fa-circle-info me-1"></i> Sumbu Y Kanan: Garis Biaya (Rupiah)</span>
-                </div>
             </div>
+
+            <div class="mt-3 text-end text-muted">
+                <small><i class="fa-solid fa-circle-info"></i> Sumbu Y Kiri: Konsumsi (kWh) | Sumbu Y Kanan: Total Biaya (Rupiah)</small>
+            </div>
+
         </div>
     </div>
+</div>
 
-    <script src="config.js"></script>
+<script src="config.js"></script>
 
-    <script>
-        window.trenChartInstance = null;
+<script>
+window.trenChartInstance = null;
 
-        async function muatGrafikTahunan() {
-            const loadingEl = document.getElementById('loadingTren');
-            const containerEl = document.getElementById('canvasContainer');
+// Otomatis running pas halaman pertama dibuka
+document.addEventListener("DOMContentLoaded", function() {
+    muatGrafikTrenTahunan();
+});
 
-            const masterBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-            let totalKwhLwbp = Array(12).fill(0);
-            let totalKwhWbp = Array(12).fill(0);
-            let totalBiayaBulanan = Array(12).fill(0);
-            let bulanMaksimalTerdeteksi = 0;
+async function muatGrafikTrenTahunan() {
+    const loadingEl = document.getElementById('loadingTren');
+    const containerEl = document.getElementById('canvasContainer');
 
-            try {
-                if (typeof DAFTAR_PERIODE_TAGIHAN === 'undefined') {
-                    alert("Gagal memuat config.js. Pastikan file config.js berada di folder yang sama.");
-                    return;
+    // Ambil status check kontal centang (true/false)
+    const infoLidahAktif = document.getElementById('chkLidah').checked;
+    const infoKetintangAktif = document.getElementById('chkKetintang').checked;
+    const infoMustopoAktif = document.getElementById('chkMustopo').checked;
+
+    const masterBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    let totalKwhLwbp = Array(12).fill(0);
+    let totalKwhWbp = Array(12).fill(0);
+    let totalBiayaBulanan = Array(12).fill(0);
+    let bulanMaksimalTerdeteksi = 0; 
+    let adaDataDihitung = false; // Flag penanda jika tidak ada kampus yang dicentang
+
+    try {
+        if (typeof DAFTAR_PERIODE_TAGIHAN === 'undefined') return;
+
+        const filesGabungan = DAFTAR_PERIODE_TAGIHAN.GABUNGAN;
+        const elemenTerakhir = filesGabungan[filesGabungan.length - 1];
+        const listFilesToFetch = elemenTerakhir.value.split(',');
+
+        for (let file of listFilesToFetch) {
+            let namaFileBersih = file.trim();
+            if (!namaFileBersih) continue;
+
+            if (!namaFileBersih.endsWith('.json')) namaFileBersih += '.json';
+
+            let fileLower = namaFileBersih.toLowerCase();
+
+            // --- PROTEKSI FILTER KAMPUS ---
+            // Jika file mengandung kata 'lidah' tapi checkbox Lidah tidak dicentang, kita skip
+            if (fileLower.includes("lidah") && !infoLidahAktif) continue;
+            // Jika file mengandung kata 'ktt' tapi checkbox Ketintang tidak dicentang, kita skip
+            if (fileLower.includes("ktt") && !infoKetintangAktif) continue;
+            // Jika file mengandung kata 'mus' tapi checkbox Mustopo tidak dicentang, kita skip
+            if (fileLower.includes("mus") && !infoMustopoAktif) continue;
+
+            // Tentukan kelompok bulan
+            let indexBulan = -1;
+            if (fileLower.includes("januari")) indexBulan = 0;
+            else if (fileLower.includes("februari")) indexBulan = 1;
+            else if (fileLower.includes("maret")) indexBulan = 2;
+            else if (fileLower.includes("april")) indexBulan = 3;
+            else if (fileLower.includes("mei")) indexBulan = 4;
+            else if (fileLower.includes("juni")) indexBulan = 5;
+            else if (fileLower.includes("juli")) indexBulan = 6;
+            else if (fileLower.includes("agustus")) indexBulan = 7;
+            else if (fileLower.includes("september")) indexBulan = 8;
+            else if (fileLower.includes("oktober")) indexBulan = 9;
+            else if (fileLower.includes("november")) indexBulan = 10;
+            else if (fileLower.includes("desember")) indexBulan = 11;
+
+            if (indexBulan === -1) continue;
+            if (indexBulan > bulanMaksimalTerdeteksi) bulanMaksimalTerdeteksi = indexBulan;
+
+            const response = await fetch(`data_tagihan/${namaFileBersih}`);
+            if (!response.ok) continue; 
+            
+            const dataJson = await response.json();
+            adaDataDihitung = true;
+            
+            dataJson.forEach(item => {
+                let valLwbp = 0, valWbp = 0, valBiaya = 0;
+                for (let key in item) {
+                    if (key.toLowerCase().includes("lwbp")) { valLwbp = parseInt(item[key]) || 0; break; }
                 }
-
-                const filesGabungan = DAFTAR_PERIODE_TAGIHAN.GABUNGAN;
-                // Ambil baris rekap terakhir secara mutlak
-                const elemenTerakhir = filesGabungan[filesGabungan.length - 1];
-                const listFilesToFetch = elemenTerakhir.value.split(',');
-
-                for (let file of listFilesToFetch) {
-                    let namaFileBersih = file.trim();
-                    if (!namaFileBersih) continue;
-
-                    if (!namaFileBersih.endsWith('.json')) {
-                        namaFileBersih += '.json';
-                    }
-
-                    // Deteksi index bulan dari nama file
-                    let indexBulan = -1;
-                    let fileLower = namaFileBersih.toLowerCase();
-
-                    if (fileLower.includes("januari")) indexBulan = 0;
-                    else if (fileLower.includes("februari")) indexBulan = 1;
-                    else if (fileLower.includes("maret")) indexBulan = 2;
-                    else if (fileLower.includes("april")) indexBulan = 3;
-                    else if (fileLower.includes("mei")) indexBulan = 4;
-                    else if (fileLower.includes("juni")) indexBulan = 5;
-                    else if (fileLower.includes("juli")) indexBulan = 6;
-                    else if (fileLower.includes("agustus")) indexBulan = 7;
-                    else if (fileLower.includes("september")) indexBulan = 8;
-                    else if (fileLower.includes("oktober")) indexBulan = 9;
-                    else if (fileLower.includes("november")) indexBulan = 10;
-                    else if (fileLower.includes("desember")) indexBulan = 11;
-
-                    if (indexBulan === -1) continue;
-
-                    if (indexBulan > bulanMaksimalTerdeteksi) {
-                        bulanMaksimalTerdeteksi = indexBulan;
-                    }
-
-                    // Ambil file json dari folder data_tagihan
-                    const response = await fetch(`data_tagihan/${namaFileBersih}`);
-                    if (!response.ok) continue;
-
-                    const dataJson = await response.json();
-
-                    dataJson.forEach(item => {
-                        let valLwbp = 0, valWbp = 0, valBiaya = 0;
-
-                        // Deteksi otomatis nama kolom (Key) di JSON
-                        for (let key in item) {
-                            if (key.toLowerCase().includes("lwbp")) {
-                                valLwbp = parseInt(item[key]) || 0;
-                                break;
-                            }
-                        }
-                        for (let key in item) {
-                            if (key.toLowerCase().includes("wbp") && !key.toLowerCase().includes("lwbp")) {
-                                valWbp = parseInt(item[key]) || 0;
-                                break;
-                            }
-                        }
-                        for (let key in item) {
-                            if (key.toLowerCase().includes("tagihan") || key.toLowerCase().includes("total") || key.toLowerCase().includes("biaya")) {
-                                valBiaya = parseInt(item[key]) || 0;
-                                break;
-                            }
-                        }
-
-                        totalKwhLwbp[indexBulan] += valLwbp;
-                        totalKwhWbp[indexBulan] += valWbp;
-                        totalBiayaBulanan[indexBulan] += valBiaya;
-                    });
+                for (let key in item) {
+                    if (key.toLowerCase().includes("wbp") && !key.toLowerCase().includes("lwbp")) { valWbp = parseInt(item[key]) || 0; break; }
                 }
-
-                // Potong data dinamis agar sumbu X berhenti di bulan data terupdate Anda
-                let batasSlice = bulanMaksimalTerdeteksi + 1;
-                const labelSumbuX = masterBulan.slice(0, batasSlice);
-                const dataLwbp = totalKwhLwbp.slice(0, batasSlice);
-                const dataWbp = totalKwhWbp.slice(0, batasSlice);
-                const dataBiaya = totalBiayaBulanan.slice(0, batasSlice);
-
-                // Render Chart.js
-                const ctx = document.getElementById('chartTrenBulanan').getContext('2d');
-                window.trenChartInstance = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labelSumbuX,
-                        datasets: [
-                            {
-                                label: 'Total kWh LWBP ☀️',
-                                data: dataLwbp,
-                                backgroundColor: '#1e3c72',
-                                yAxisID: 'yKwh',
-                                order: 2
-                            },
-                            {
-                                label: 'Total kWh WBP 🌙',
-                                data: dataWbp,
-                                backgroundColor: '#fd7e14',
-                                yAxisID: 'yKwh',
-                                order: 2
-                            },
-                            {
-                                label: 'Total Biaya (Rp) 💰',
-                                data: dataBiaya,
-                                type: 'line',
-                                borderColor: '#dc3545',
-                                backgroundColor: '#dc3545',
-                                borderWidth: 3,
-                                pointRadius: 5,
-                                fill: false,
-                                yAxisID: 'yRupiah',
-                                order: 1
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            x: { grid: { display: false } },
-                            yKwh: {
-                                type: 'linear',
-                                position: 'left',
-                                title: { display: true, text: 'Konsumsi Energi (kWh)', font: { weight: 'bold', size: 14 } },
-                                ticks: { callback: function(value) { return value.toLocaleString('id-ID') + ' kWh'; } }
-                            },
-                            yRupiah: {
-                                type: 'linear',
-                                position: 'right',
-                                title: { display: true, text: 'Total Pengeluaran (Rp)', font: { weight: 'bold', size: 14 } },
-                                grid: { display: false },
-                                ticks: { callback: function(value) { return 'Rp ' + (value / 1000000).toFixed(0) + ' Jt'; } }
-                            }
-                        },
-                        plugins: {
-                            tooltip: {
-                                mode: 'index',
-                                intersect: false
-                            }
-                        }
-                    }
-                });
-
-                if (loadingEl) loadingEl.style.display = 'none';
-                if (containerEl) containerEl.style.display = 'block';
-
-            } catch (error) {
-                console.error(error);
-                alert("Gagal memproses data grafik: " + error.message);
-            }
+                for (let key in item) {
+                    if (key.toLowerCase().includes("tagihan") || key.toLowerCase().includes("total") || key.toLowerCase().includes("biaya")) { valBiaya = parseInt(item[key]) || 0; break; }
+                }
+                totalKwhLwbp[indexBulan] += valLwbp;
+                totalKwhWbp[indexBulan] += valWbp;
+                totalBiayaBulanan[indexBulan] += valBiaya;
+            });
         }
 
-        // Jalankan fungsi otomatis saat halaman selesai di-load
-        document.addEventListener("DOMContentLoaded", muatGrafikTahunan);
-    </script>
+        // Jika semua checkbox dimatikan, paksa batas tampilan minimal Januari-Juni agar sumbu X tidak hilang
+        let batasSlice = adaDataDihitung ? (bulanMaksimalTerdeteksi + 1) : 6;
+        
+        const labelSumbuX = masterBulan.slice(0, batasSlice);
+        const dataLwbp = totalKwhLwbp.slice(0, batasSlice);
+        const dataWbp = totalKwhWbp.slice(0, batasSlice);
+        const dataBiaya = totalBiayaBulanan.slice(0, batasSlice);
+
+        const ctx = document.getElementById('chartTrenBulanan').getContext('2d');
+        
+        if (window.trenChartInstance) {
+            window.trenChartInstance.destroy();
+        }
+
+        window.trenChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labelSumbuX, 
+                datasets: [
+                    {
+                        label: 'Total kWh LWBP ☀️',
+                        data: dataLwbp,
+                        backgroundColor: '#1e3c72',
+                        yAxisID: 'yKwh',
+                        order: 2
+                    },
+                    {
+                        label: 'Total kWh WBP 🌙',
+                        data: dataWbp,
+                        backgroundColor: '#fd7e14',
+                        yAxisID: 'yKwh',
+                        order: 2
+                    },
+                    {
+                        label: 'Total Biaya (Rp) 💰',
+                        data: dataBiaya,
+                        type: 'line',
+                        borderColor: '#dc3545',
+                        backgroundColor: '#dc3545',
+                        borderWidth: 4,
+                        pointRadius: 5,
+                        fill: false,
+                        yAxisID: 'yRupiah',
+                        order: 1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 400 }, // Mengurangi durasi agar transisi filter terasa cepat dan halus
+                scales: {
+                    x: { grid: { display: false } },
+                    yKwh: {
+                        type: 'linear',
+                        position: 'left',
+                        title: { display: true, text: 'Konsumsi Energi (kWh)', font: { weight: 'bold', size: 14 } },
+                        ticks: { callback: function(value) { return value.toLocaleString('id-ID') + ' kWh'; } }
+                    },
+                    yRupiah: {
+                        type: 'linear',
+                        position: 'right',
+                        title: { display: true, text: 'Total Pengeluaran (Rp)', font: { weight: 'bold', size: 14 } },
+                        grid: { display: false },
+                        ticks: { callback: function(value) { return 'Rp ' + (value / 1000000).toFixed(0) + ' Jt'; } }
+                    }
+                }
+            }
+        });
+
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (containerEl) containerEl.style.display = 'block';
+
+    } catch (error) {
+        console.error(error);
+    }
+}
+</script>
 </body>
 </html>
