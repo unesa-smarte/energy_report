@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Online Penggunaan Energi - UNESA</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { 
+            background-color: #f4f7f6; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .landing-card {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            background: #ffffff;
+            overflow: hidden;
+        }
+        .brand-header {
+            background: linear-gradient(135deg, #1e3c72 0%, #157347 100%);
+            padding: 40px 20px;
+            color: white;
+            text-align: center;
+        }
+        /* Wadah untuk menampilkan logo resmi secara utuh dan bersih */
+        .logo-container {
+            margin-bottom: 20px;
+        }
+        .logo-container img {
+            width: 130px; /* Ukuran proporsional untuk logo kotak resmi */
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0px 4px 12px rgba(0,0,0,0.2);
+            transition: transform 0.2s ease;
+        }
+        .logo-container img:hover {
+            transform: scale(1.03);
+        }
+        .menu-link {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 2px solid #eef2f5;
+            border-radius: 12px;
+            text-decoration: none;
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.25s ease-in-out;
+        }
+        .menu-link:hover {
+            background-color: #f9fbf9;
+            border-color: #198754;
+            color: #1e3c72;
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(25, 135, 84, 0.15);
+        }
+        .menu-icon {
+            font-size: 1.7rem;
+            margin-right: 20px;
+            width: 45px;
+            text-align: center;
+        }
+        .text-unesa-blue { color: #1e3c72; }
+        .text-energy-green { color: #198754; }
+        .footer-text {
+            font-size: 0.85rem;
+            color: #7f8c8d;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6">
+            
+            <div class="card landing-card">
+                <div class="brand-header">
+                    <div class="logo-container">
+                        <img src="logo.png" alt="Logo Resmi Universitas Negeri Surabaya">
+                    </div>
+                    <h3 class="fw-bold mb-1">UNIVERSITAS NEGERI SURABAYA</h3>
+                    <p class="mb-0 opacity-75 fs-6">Towards Smart and Green Energy Ecosystem</p>
+                </div>
+
+                <div class="card-body p-4 p-sm-5">
+                    <h4 class="text-center fw-bold mb-4 text-unesa-blue">
+                        <i class="fa-solid fa-leaf text-energy-green"></i> Laporan Online Penggunaan Energi
+                    </h4>
+                    
+                    <div class="menu-container">
+                        <a href="pzem.html" class="menu-link">
+                            <div class="menu-icon text-unesa-blue">
+                                <i class="fa-solid fa-bolt-lightning"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div>Monitoring Penggunaan Energi</div>
+                                <small class="text-muted fw-normal d-block">Analisis instan & fluktuasi beban realtime per sensor meter</small>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-muted fs-6 ms-2"></i>
+                        </a>
+
+                        <a href="energy.html" class="menu-link">
+                            <div class="menu-icon text-energy-green">
+                                <i class="fa-solid fa-chart-line"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div>Laporan Bulanan Biaya dan Jejak Karbon</div>
+                                <small class="text-muted fw-normal d-block">Audit emisi CO₂, denda kVArh, & rekap tagihan Juni 2026</small>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-muted fs-6 ms-2"></i>
+                        </a>
+                    </div>
+
+                    <p class="footer-text mt-4 pt-3 border-top">
+                        <i class="fa-solid fa-shield-halved text-energy-green"></i> Dikembangkan oleh Tim Divisi Smart Energy UNESA © 2026
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
