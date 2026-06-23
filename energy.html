@@ -147,75 +147,70 @@ async function bukaModalTren() {
     loadingEl.style.display = 'block';
     containerEl.style.display = 'none';
 
-    // Label untuk sumbu X grafik (hanya tampilkan bulan yang datanya ready sesuai config)
-    const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    // Label untuk sumbu X grafik
+    const namaBulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni"];
     
-    // Siapkan wadah data kosong untuk 12 bulan
-    let totalKwhLwbp = Array(12).fill(0);
-    let totalKwhWbp = Array(12).fill(0);
-    let totalBiayaBulanan = Array(12).fill(0);
+    // Siapkan wadah data kosong untuk 6 bulan (Jan - Jun)
+    let totalKwhLwbp = Array(6).fill(0);
+    let totalKwhWbp = Array(6).fill(0);
+    let totalBiayaBulanan = Array(6).fill(0);
 
     try {
         const filesGabungan = DAFTAR_PERIODE_TAGIHAN.GABUNGAN || [];
+        
+        // 1. Ambil KUNCI elemen terakhir dari array GABUNGAN
+        const elemenTerakhir = filesGabungan[filesGabungan.length - 1];
+        
+        if (!elemenTerakhir || !elemenTerakhir.value) {
+            throw new Error("Data rekap tahunan pada config.js tidak ditemukan.");
+        }
 
-        // Lakukan looping, TETAPI batasi agar item terakhir (Rekap Tahunan) tidak ikut di-looping bulanan
-        for (let i = 0; i < filesGabungan.length; i++) {
-            let periode = filesGabungan[i];
-            
-            // Jika mendapati label "Rekap Tahunan" atau "Semua Data", lewati (skip) dari urutan grafik bulanan
-            if (periode.label.includes("Rekap Tahunan") || periode.label.includes("Semua Data")) {
+        // 2. Pecah string value raksasa menjadi array nama file individu
+        const listFilesToFetch = elemenTerakhir.value.split(',');
+
+        // 3. Lakukan fetch secara paralel/bergantian untuk semua file yang terdaftar
+        for (let file of listFilesToFetch) {
+            let namaFileBersih = file.trim();
+            if (!namaFileBersih) continue;
+
+            // Tambahkan ekstensi .json jika belum ada
+            if (!namaFileBersih.endsWith('.json')) {
+                namaFileBersih += '.json';
+            }
+
+            // Tentukan index bulan (0-5) berdasarkan deteksi kata di dalam NAMA FILE-nya
+            let indexBulan = -1;
+            let fileUpper = namaFileBersih.toUpperCase();
+
+            if (fileUpper.includes("JANUARI")) indexBulan = 0;
+            else if (fileUpper.includes("FEBRUARI")) indexBulan = 1;
+            else if (fileUpper.includes("MARET")) indexBulan = 2;
+            else if (fileUpper.includes("APRIL")) indexBulan = 3;
+            else if (fileUpper.includes("MEI")) indexBulan = 4;
+            else if (fileUpper.includes("JUNI")) indexBulan = 5;
+
+            // Jika file tidak cocok dengan bulan manapun, lewati
+            if (indexBulan === -1) continue;
+
+            // Ambil file dari folder data_tagihan/
+            const response = await fetch(`data_tagihan/${namaFileBersih}`);
+            if (!response.ok) {
+                console.warn(`File data_tagihan/${namaFileBersih} tidak ditemukan.`);
                 continue; 
             }
             
-            // Ambil index bulan secara presisi berdasarkan deteksi kata di teks labelnya
-            let indexBulan = i; // fallback urutan array
-            let labelUpper = periode.label.toUpperCase();
-            
-            if (labelUpper.includes("JANUARI")) indexBulan = 0;
-            else if (labelUpper.includes("FEBRUARI")) indexBulan = 1;
-            else if (labelUpper.includes("MARET")) indexBulan = 2;
-            else if (labelUpper.includes("APRIL")) indexBulan = 3;
-            else if (labelUpper.includes("MEI")) indexBulan = 4;
-            else if (labelUpper.includes("JUNI")) indexBulan = 5;
-            else if (labelUpper.includes("JULI")) indexBulan = 6;
-            else if (labelUpper.includes("AGUSTUS")) indexBulan = 7;
-            else if (labelUpper.includes("SEPTEMBER")) indexBulan = 8;
-            else if (labelUpper.includes("OKTOBER")) indexBulan = 9;
-            else if (labelUpper.includes("NOVEMBER")) indexBulan = 10;
-            else if (labelUpper.includes("DESEMBER")) indexBulan = 11;
+            const dataJson = await response.json();
 
-            // Pecah string nama file yang dipisah oleh koma
-            const listFilesToFetch = periode.value.split(',');
-            
-            for (let file of listFilesToFetch) {
-                let namaFileBersih = file.trim();
-                if(!namaFileBersih) continue;
+            // akumulasikan data ke dalam bulan yang sesuai
+            dataJson.forEach(item => {
+                let lwbp = parseInt(item["kWh LWBP"]) || parseInt(item["LWBP"]) || 0;
+                let wbp = parseInt(item["kWh WBP"]) || parseInt(item["WBP"]) || 0;
+                let biaya = parseInt(item["Total Tagihan"]) || parseInt(item["Tagihan"]) || 0;
 
-                // Tambahkan ekstensi .json jika belum tertulis di config
-                if(!namaFileBersih.endsWith('.json')) {
-                    namaFileBersih += '.json';
-                }
-                
-                // Ambil file dari folder data_tagihan/
-                const response = await fetch(`data_tagihan/${namaFileBersih}`);
-                if (!response.ok) {
-                    console.warn(`File data_tagihan/${namaFileBersih} tidak ditemukan.`);
-                    continue; 
-                }
-                
-                const dataJson = await response.json();
-
-                dataJson.forEach(item => {
-                    // Penyesuaian key nama kolom di JSON Anda
-                    let lwbp = parseInt(item["kWh LWBP"]) || parseInt(item["LWBP"]) || 0;
-                    let wbp = parseInt(item["kWh WBP"]) || parseInt(item["WBP"]) || 0;
-                    let biaya = parseInt(item["Total Tagihan"]) || parseInt(item["Tagihan"]) || 0;
-
-                    totalKwhLwbp[indexBulan] += lwbp;
-                    totalKwhWbp[indexBulan] += wbp;
-                    totalBiayaBulanan[indexBulan] += biaya;
-                });
-            }
+                totalKwhLwbp[indexBulan] += lwbp;
+                totalKwhWbp[indexBulan] += wbp;
+                totalBiayaBulanan[indexBulan] += biaya;
+            });
         }
 
         // --- RENDER KE CHART.JS ---
@@ -227,25 +222,25 @@ async function bukaModalTren() {
         trenChartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: namaBulan.slice(0, 6), // Hanya memotong & menampilkan Januari - Juni sesuai data yang ready
+                labels: namaBulan, 
                 datasets: [
                     {
                         label: 'Total kWh LWBP ☀️',
-                        data: totalKwhLwbp.slice(0, 6),
+                        data: totalKwhLwbp,
                         backgroundColor: '#1e3c72',
                         yAxisID: 'yKwh',
                         order: 2
                     },
                     {
                         label: 'Total kWh WBP 🌙',
-                        data: totalKwhWbp.slice(0, 6),
+                        data: totalKwhWbp,
                         backgroundColor: '#fd7e14',
                         yAxisID: 'yKwh',
                         order: 2
                     },
                     {
                         label: 'Total Biaya (Rp) 💰',
-                        data: totalBiayaBulanan.slice(0, 6),
+                        data: totalBiayaBulanan,
                         type: 'line',
                         borderColor: '#dc3545',
                         backgroundColor: '#dc3545',
