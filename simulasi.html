@@ -217,7 +217,100 @@
         }
     }
 
-  function buildSimulationTable() {
+  async function loadDataSimulasi() {
+        const fileKeyRaw = document.getElementById('periodSelector').value;
+        const overlay = document.getElementById('loadingOverlay');
+        if(!fileKeyRaw) return;
+
+        const selectorEl = document.getElementById('periodSelector');
+        document.getElementById('periodeAktifText').innerText = selectorEl.options[selectorEl.selectedIndex].text;
+        overlay.style.display = 'flex';
+
+        try {
+            const listFiles = fileKeyRaw.split(',');
+            let rawCombinedData = [];
+
+            for (let file of listFiles) {
+                const response = await fetch(`data_tagihan/${file.trim()}.json`);
+                if (!response.ok) throw new Error(`File JSON data_tagihan/${file.trim()}.json tidak ditemukan.`);
+                const dataData = await response.json();
+                rawCombinedData = rawCombinedData.concat(dataData);
+            }
+
+            let consolidatedMap = {};
+            rawCombinedData.forEach(item => {
+                let idpel = item["ID Pelanggan"] || "Tanpa ID";
+                let nama = item["Nama Pelanggan"] || item["File Name"] || "Gedung Tidak Diketahui";
+                let key = idpel !== "Tanpa ID" ? idpel : nama;
+
+                // 1. Ambil nama golongan/tarif asli dari JSON untuk tampilan tekstual
+                let rawTarif = item["Golongan"] || item["Tarif"] || "S2";
+                
+                // 2. Ambil nilai tarif per kWh MURNI langsung dari JSON
+                let tarifLwbpTerdeteksi = parseFloat(item["Tarif LWBP"]) || 0;
+                let tarifWbpTerdeteksi = parseFloat(item["Tarif WBP"]) || 0;
+
+                // 3. Ekstrak angka daya untuk format tampilan (misal: 105000 -> 105.000 VA)
+                let angkaDaya = rawTarif.replace(/\D/g, ""); 
+                if (!angkaDaya && item["Daya"]) {
+                    angkaDaya = String(item["Daya"]).replace(/\D/g, "");
+                }
+                let dayaMentah = angkaDaya ? parseInt(angkaDaya).toLocaleString('id-ID') + " VA" : "—";
+
+                // 4. Bersihkan nama Golongan (ambil huruf depan seperti S1, S2, P1, B2 jika ada)
+                let namaGolBersih = "S2"; 
+                if (rawTarif.toUpperCase().includes("S1")) namaGolBersih = "S1";
+                else if (rawTarif.toUpperCase().includes("S2")) namaGolBersih = "S2";
+                else if (rawTarif.toUpperCase().includes("P1")) namaGolBersih = "P1";
+                else if (rawTarif.toUpperCase().includes("B2")) namaGolBersih = "B2";
+                else {
+                    // Jika kolom tarif di JSON hanya angka, tebak nama hurufnya berdasarkan tarif/daya
+                    if (tarifWbpTerdeteksi === 0 && tarifLwbpTerdeteksi <= 900) namaGolBersih = "S1";
+                    else if (nama.toUpperCase().includes("ASRAMA")) namaGolBersih = "P1";
+                    else if (nama.toLowerCase().includes("futsal")) namaGolBersih = "B2";
+                }
+
+                let lwbp_kwh = parseInt(item["kWh LWBP"]) || 0;
+                let wbp_kwh = parseInt(item["kWh WBP"]) || 0;
+                let denda_val = parseInt(item["Denda KVArh"]) || parseInt(item["KVArh Rupiah"]) || 0;
+                let tagihan_total = parseInt(item["Total Tagihan"]) || 0;
+
+                if (consolidatedMap[key]) {
+                    consolidatedMap[key].lwbp += lwbp_kwh;
+                    consolidatedMap[key].wbp += wbp_kwh;
+                    consolidatedMap[key].denda += denda_val;
+                    consolidatedMap[key].tagihan += tagihan_total;
+                } else {
+                    consolidatedMap[key] = {
+                        idpel: idpel,
+                        nama: nama,
+                        gol: namaGolBersih,
+                        dayaFormatted: dayaMentah,
+                        lwbp: lwbp_kwh,
+                        wbp: wbp_kwh,
+                        denda: denda_val,
+                        tagihan: tagihan_total,
+                        tarifLwbp: tarifLwbpTerdeteksi, // Digunakan mutlak untuk kalkulasi slider
+                        tarifWbp: tarifWbpTerdeteksi    // Digunakan mutlak untuk kalkulasi slider
+                    };
+                }
+            });
+
+            databaseGedung = Object.values(consolidatedMap).map((item, index) => {
+                return { id: index + 1, ...item };
+            });
+
+            buildSimulationTable();
+
+        } catch (error) {
+            console.error("Gagal memuat visualisasi data simulasi:", error);
+            alert(`Gagal memuat simulator: ${error.message}`);
+        } finally {
+            overlay.style.display = 'none';
+        }
+    }
+
+    function buildSimulationTable() {
         const tbody = document.getElementById('simulationTableBody');
         tbody.innerHTML = '';
         shiftState = {};
@@ -232,30 +325,17 @@
             shiftState[g.id] = 0; 
             dendaActiveState[g.id] = true;
 
-            let badgeClass = TARIF_MASTER_DEFAULT[g.gol] ? TARIF_MASTER_DEFAULT[g.gol].badge : "bg-secondary text-white";
+            // Penentuan kelas badge warna hanya untuk estetika UI berdasarkan variabel g.gol hasil filter
+            let badgeClass = "bg-success text-white"; // default S2
+            if (g.gol === "S1") badgeClass = "bg-primary text-white";
+            else if (g.gol === "P1") badgeClass = "bg-danger text-white";
+            else if (g.gol === "B2") badgeClass = "bg-warning text-dark";
+
+            // KALKULASI MUTLAK: Menggunakan nilai g.tarifLwbp dan g.tarifWbp murni dari JSON hasil loadDataSimulasi
             let costAktualGedung = (g.lwbp * g.tarifLwbp) + (g.wbp * g.tarifWbp) + g.denda;
 
-            // --- REVISI FORMAT TAMPILAN GOLONGAN & DAYA VA ---
-            // Memastikan jika data daya mengandung kata 'VA' atau angka mentah, kita rapikan formatnya
-            let dayaBersih = g.daya || "—"; 
-            // Jika isi g.gol mengandung daya mentah (misal "S2/105000VA" atau "105000VA"), kita buat tampilan yang rapi:
-            let tampilanGolDaya = `${g.gol} - ${dayaBersih}`;
-            
-            // Logika cerdas jika field daya menyatu di gol (misal JSON-nya bertuliskan "S2 / 105000 VA")
-            if(g.gol.includes("VA") || g.gol.includes("00")) {
-                tampilanGolDaya = g.gol; // gunakan apa adanya jika sudah terformat dari database
-            } else if (g.gol && !g.gol.includes("VA")) {
-                // Mencoba mencari info daya pendukung dari file json jika ada komponen manifest daya terpisah
-                let dayaSaja = g.daya || ""; 
-                if(!dayaSaja && g.nama.toLowerCase().includes("pool") || g.nama.toLowerCase().includes("kolam")) dayaSaja = "7.700 VA";
-                
-                // Jika daya mentah berupa angka murni (cth: 105000), beri format ribuan dan imbuhan VA
-                if(dayaSaja && !isNaN(dayaSaja)) {
-                    dayaSaja = parseInt(dayaSaja).toLocaleString('id-ID') + " VA";
-                }
-                
-                tampilanGolDaya = dayaSaja ? `${g.gol} - ${dayaSaja}` : `${g.gol}`;
-            }
+            // Format tampilan kombinasi Golongan dan Kapasitas Daya
+            let tampilanGolDaya = `${g.gol} - ${g.dayaFormatted}`;
 
             const tr = document.createElement('tr');
             tr.id = `row_${g.id}`;
@@ -269,7 +349,7 @@
                         <span class="badge ${badgeClass} badge-tarif">Gol: ${tampilanGolDaya}</span>
                         <small class="text-muted border-start ps-1" style="font-size:0.75rem;">WBP: Rp ${g.tarifWbp.toLocaleString('id-ID')}/kWh</small>
                     </div>
-                    <div style="font-size:0.83rem;">☀️ LWBP: <b>${g.lwbp.toLocaleString('id-ID')}</b> kWh</div>
+                    <div style="font-size:0.83rem;">☀️ LWBP: <b>${g.lwbp.toLocaleString('id-ID')}</b> kWh <small class="text-muted">(Rp ${g.tarifLwbp})</small></div>
                     <div style="font-size:0.83rem;" class="${g.wbp > 0 ? 'text-warning fw-bold' : 'text-muted'}">🌙 WBP: <b>${g.wbp.toLocaleString('id-ID')}</b> kWh</div>
                 </td>
                 <td class="text-center">
