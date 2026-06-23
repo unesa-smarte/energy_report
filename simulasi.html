@@ -217,7 +217,7 @@
         }
     }
 
-    function buildSimulationTable() {
+  function buildSimulationTable() {
         const tbody = document.getElementById('simulationTableBody');
         tbody.innerHTML = '';
         shiftState = {};
@@ -235,6 +235,28 @@
             let badgeClass = TARIF_MASTER_DEFAULT[g.gol] ? TARIF_MASTER_DEFAULT[g.gol].badge : "bg-secondary text-white";
             let costAktualGedung = (g.lwbp * g.tarifLwbp) + (g.wbp * g.tarifWbp) + g.denda;
 
+            // --- REVISI FORMAT TAMPILAN GOLONGAN & DAYA VA ---
+            // Memastikan jika data daya mengandung kata 'VA' atau angka mentah, kita rapikan formatnya
+            let dayaBersih = g.daya || "—"; 
+            // Jika isi g.gol mengandung daya mentah (misal "S2/105000VA" atau "105000VA"), kita buat tampilan yang rapi:
+            let tampilanGolDaya = `${g.gol} - ${dayaBersih}`;
+            
+            // Logika cerdas jika field daya menyatu di gol (misal JSON-nya bertuliskan "S2 / 105000 VA")
+            if(g.gol.includes("VA") || g.gol.includes("00")) {
+                tampilanGolDaya = g.gol; // gunakan apa adanya jika sudah terformat dari database
+            } else if (g.gol && !g.gol.includes("VA")) {
+                // Mencoba mencari info daya pendukung dari file json jika ada komponen manifest daya terpisah
+                let dayaSaja = g.daya || ""; 
+                if(!dayaSaja && g.nama.toLowerCase().includes("pool") || g.nama.toLowerCase().includes("kolam")) dayaSaja = "7.700 VA";
+                
+                // Jika daya mentah berupa angka murni (cth: 105000), beri format ribuan dan imbuhan VA
+                if(dayaSaja && !isNaN(dayaSaja)) {
+                    dayaSaja = parseInt(dayaSaja).toLocaleString('id-ID') + " VA";
+                }
+                
+                tampilanGolDaya = dayaSaja ? `${g.gol} - ${dayaSaja}` : `${g.gol}`;
+            }
+
             const tr = document.createElement('tr');
             tr.id = `row_${g.id}`;
             tr.innerHTML = `
@@ -244,7 +266,7 @@
                 </td>
                 <td>
                     <div class="mb-1">
-                        <span class="badge ${badgeClass} badge-tarif">Gol: ${g.gol}</span>
+                        <span class="badge ${badgeClass} badge-tarif">Gol: ${tampilanGolDaya}</span>
                         <small class="text-muted border-start ps-1" style="font-size:0.75rem;">WBP: Rp ${g.tarifWbp.toLocaleString('id-ID')}/kWh</small>
                     </div>
                     <div style="font-size:0.83rem;">☀️ LWBP: <b>${g.lwbp.toLocaleString('id-ID')}</b> kWh</div>
