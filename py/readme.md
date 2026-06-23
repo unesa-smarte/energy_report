@@ -1,1 +1,1 @@
-# disini tersimpan python unntuk berbagai keperluan kamu ..
+# disini tersimpan python untuk berbagai keperluan kamu ..
