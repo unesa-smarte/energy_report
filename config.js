@@ -34,7 +34,7 @@ const DAFTAR_PERIODE_TAGIHAN = {
         { value: "lidah_April_26,ktt_April_26,mus_April_26", label: "🌍 Total Gabungan 3 Kampus (April 2026)" },
         { value: "lidah_Mei_26,ktt_Mei_26,mus_Mei_26", label: "🌍 Total Gabungan 3 Kampus (Mei2026)" },
         { value: "lidah_Juni_26,ktt_Juni_26,mus_Juni_26", label: "🌍 Total Gabungan 3 Kampus (Juni 2026)" },
-        { value: "lidah_Januari_26,lidah_Februari_26,lidah_Maret_26,lidah_April_26,lidah_Mei_26,lidah_Juni_26,ktt_Januari_26,ktt_Februari_26,ktt_Maret_26,ktt_April_26,ktt_Mei_26.ktt_Juni_26,mus_Januari_26,mus_Februari_26,mus_Maret_26,mus_April_26,mus_Mei_26,mus_Juni_26", label: "📊 Total Rekap Tahunan 2026 (Semua Data)" }
+        { value: "lidah_Januari_26,lidah_Februari_26,lidah_Maret_26,lidah_April_26,lidah_Mei_26,lidah_Juni_26,ktt_Januari_26,ktt_Februari_26,ktt_Maret_26,ktt_April_26,ktt_Mei_26,ktt_Juni_26,mus_Januari_26,mus_Februari_26,mus_Maret_26,mus_April_26,mus_Mei_26,mus_Juni_26", label: "📊 Total Rekap Tahunan 2026 (Semua Data)" }
     
     ]
 };
