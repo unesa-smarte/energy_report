@@ -11,7 +11,7 @@ const DAFTAR_PERIODE_TAGIHAN = {
         //{ value: "lidah_Agustus_25", label: "Agustus 2025 (Lidah Wetan)" }, //datanya belum ready
         { value: "lidah_September_25", label: "September 2025 (Lidah Wetan)" },
         { value: "lidah_Oktober_25", label: "Oktober 2025 (Lidah Wetan)" },
-        { value: "lidah_November_25", label: "Nopember 2025 (Lidah Wetan)" },
+        { value: "lidah_November_25", label: "November 2025 (Lidah Wetan)" },
         { value: "lidah_Desember_25", label: "Desember 2025 (Lidah Wetan)" }
         // Bulan depan cukup tambah di sini, contoh:
         // { value: "lidah_juli_25", label: "Juli 2025 (Lidah Wetan)" }
@@ -27,7 +27,7 @@ const DAFTAR_PERIODE_TAGIHAN = {
         { value: "ktt_Agustus_25", label: "Agustus 2025 (Ketintang)" }, 
         { value: "ktt_September_25", label: "September 2025 (Ketintang)" },
         { value: "ktt_Oktober_25", label: "Juni Oktober (Ketintang)" },
-        { value: "ktt_November_25", label: "Nopember 2025 (Ketintang)" },
+        { value: "ktt_November_25", label: "November 2025 (Ketintang)" },
         { value: "ktt_Desember_25", label: "Desember 2025 (Ketintang)" }
     ],
     "GABUNGAN":[
