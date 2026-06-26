@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulasi Optimasi Tarif Listrik UNESA</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: none; border-radius: 12px; margin-bottom: 25px; }
+        .bg-gradient-sim { background: linear-gradient(135deg, #1e3c72 0%, #2b5283 100%); color: white; }
+        .slider-label { font-size: 0.85rem; font-weight: 600; color: #495057; }
+        .saving-badge { font-size: 0.9rem; font-weight: bold; }
+        .table-responsive { max-height: 520px; overflow-y: auto; }
+        .idpel-text { font-size: 0.8rem; color: #6c757d; font-family: 'Courier New', Courier, monospace; font-weight: bold; }
+        .badge-tarif { font-size: 0.75rem; font-weight: bold; padding: 3px 6px; border-radius: 4px; }
+        .form-check-input { cursor: pointer; width: 1.15em; height: 1.15em; }
+        .loading-overlay { display: none; background: rgba(255,255,255,0.7); position: absolute; top:0; left:0; width:100%; height:100%; z-index:10; border-radius:12px; align-items:center; justify-content:center; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid px-4 py-4">
+    <div class="card bg-gradient-sim p-4 text-center mb-4 shadow">
+        <h1 class="fw-bold"><i class="fa-solid fa-sliders"></i> Simulator Pergeseran Beban Energi (Load Shifting)</h1>
+        <p class="mb-0 opacity-75">Simulasi Finansial & Analisis Komponen Kebutuhan Riil Jaringan — UNESA</p>
+    </div>
+
+    <div class="card p-3 mb-4 bg-light position-relative">
+        <div class="row align-items-center g-3">
+            <div class="col-md-4">
+                <label class="form-label fw-bold"><i class="fa-solid fa-calendar-days text-warning"></i> Ambil Data dari Periode:</label>
+                <select id="periodSelector" class="form-select fw-bold border-warning" onchange="loadDataSimulasi()">
+                    </select>
+            </div>
+            <div class="col-md-4 text-center">
+                <span class="badge bg-dark px-3 py-2">Periode Aktif Simulator: <span id="periodeAktifText" class="text-warning fw-bold">-</span></span>
+                <small class="text-muted d-block mt-1"><i class="fa-solid fa-info-circle"></i> WBP (Beban Puncak Pengali 1.5x): 17.00-22.00</small>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="energy.html" class="btn btn-primary fw-bold me-2"><i class="fa-solid fa-chart-pie"></i> Dashboard Energy</a>
+            </div>
+        </div>
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="spinner-border text-primary" role="status"></div><strong class="ms-2">Mengunduh Komponen Data Tagihan...</strong>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card p-4 text-center border-start border-primary border-5">
+                <h6 class="text-muted fw-bold">TOTAL TAGIHAN AKTUAL</h6>
+                <h3 class="fw-bold text-dark" id="totalAktual">Rp 0</h3>
+                <small class="text-muted" id="kwhAktual">0 kWh</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-4 text-center border-start border-success border-5">
+                <h6 class="text-muted fw-bold">ESTIMASI TAGIHAN BARU</h6>
+                <h3 class="fw-bold text-success" id="totalSimulasi">Rp 0</h3>
+                <small class="text-muted">Pasca Operational Optimization</small>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-4 text-center border-start border-danger border-5 bg-white">
+                <h6 class="text-muted fw-bold">TOTAL POTENSI PENGHEMATAN</h6>
+                <h3 class="fw-bold text-danger" id="totalHemat">Rp 0</h3>
+                <span class="badge bg-danger mx-auto saving-badge px-3 py-2 mt-1" id="pctHemat">0% Terpangkas</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap g-2">
+            <h5 class="fw-bold text-secondary mb-0"><i class="fa-solid fa-building-gear"></i> Pengaturan Kontrol Beban per Gedung / Meter</h5>
+            <div class="bg-light border rounded px-3 py-2 d-flex align-items-center">
+                <label class="form-check-label fw-bold text-muted me-2" style="font-size:0.85rem;" for="masterDendaCheck">Opsi Denda/Komponen Lain Global:</label>
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="masterDendaCheck" onchange="toggleAllDenda(this.checked)" checked>
+                    <span class="badge bg-dark ms-1" id="masterDendaBadge">Aktif (Hitung)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-dark sticky-top">
+                    <tr>
+                        <th style="width: 30%;">Nama Gedung & IDPEL</th>
+                        <th style="width: 25%;">Kondisi Energi Awal</th>
+                        <th style="width: 15%; text-align: center;">Komponen Tambahan/Denda</th>
+                        <th style="width: 15%;">Simulasi Pergeseran WBP</th>
+                        <th style="width: 15%; text-align: right;">Estimasi Tagihan & Hemat</th>
+                    </tr>
+                </thead>
+                <tbody id="simulationTableBody">
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">Silakan pilih periode data untuk memulai simulasi.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="config25.js"></script>
+<script>
+    // Struktur Acuan Tarif Default (Sebagai fallback jika JSON tidak menyediakan field tarif)
+    const TARIF_MASTER_DEFAULT = {
+        "S1": { lwbp: 900.00, wbp: 0, badge: "bg-primary text-white" },
+        "S2": { lwbp: 735.00, wbp: 1102.5, badge: "bg-success text-white" },
+        "P1": { lwbp: 1699.53, wbp: 0, badge: "bg-danger text-white" },
+        "B2": { lwbp: 1444.70, wbp: 0, badge: "bg-warning text-dark" }
+    };
+
+    let databaseGedung = [];
+    let shiftState = {};
+    let dendaActiveState = {};
+
+    function generateDropdownOptions() {
+        const selector = document.getElementById('periodSelector');
+        selector.innerHTML = ''; 
+
+        const mapping = [
+            { key: "LIDAH_WETAN", label: "🏢 Kampus Lidah Wetan (Bulanan)" },
+            { key: "KETINTANG", label: "🏫 Kampus Ketintang (Bulanan)" },
+            { key: "MUSTOPO", label: "🏛️ Kampus Mustopo (Bulanan)" },
+            { key: "GABUNGAN", label: "🌍 Gabungan / Tahunan" }
+        ];
+
+        mapping.forEach(groupInfo => {
+            const items = DAFTAR_PERIODE_TAGIHAN[groupInfo.key];
+            if (items && items.length > 0) {
+                let group = document.createElement('optgroup');
+                group.label = groupInfo.label;
+                items.forEach(p => {
+                    let opt = new Option(p.label, p.value);
+                    group.appendChild(opt);
+                });
+                selector.appendChild(group);
+            }
+        });
+    }
+
+    async function loadDataSimulasi() {
+        const fileKeyRaw = document.getElementById('periodSelector').value;
+        const overlay = document.getElementById('loadingOverlay');
+        if(!fileKeyRaw) return;
+
+        const selectorEl = document.getElementById('periodSelector');
+        document.getElementById('periodeAktifText').innerText = selectorEl.options[selectorEl.selectedIndex].text;
+        overlay.style.display = 'flex';
+
+        try {
+            const listFiles = fileKeyRaw.split(',');
+            let rawCombinedData = [];
+
+            for (let file of listFiles) {
+                const response = await fetch(`data_tagihan/${file.trim()}.json`);
+                if (!response.ok) throw new Error(`File JSON data_tagihan/${file.trim()}.json tidak ditemukan.`);
+                const dataData = await response.json();
+                rawCombinedData = rawCombinedData.concat(dataData);
+            }
+
+            let consolidatedMap = {};
+            rawCombinedData.forEach(item => {
+                let idpel = item["ID Pelanggan"] || "Tanpa ID";
+                let nama = item["Nama Pelanggan"] || item["File Name"] || "Gedung Tidak Diketahui";
+                let key = idpel !== "Tanpa ID" ? idpel : nama;
+
+                // Membaca atau mendeteksi golongan tarif
+                let gol = item["Golongan"] || item["Tarif"] || "S2"; 
+                if(gol.includes("S-2")) gol = "S2";
+                if(gol.includes("P-1")) gol = "P1";
+
+                let lwbp_kwh = parseInt(item["kWh LWBP"]) || 0;
+                let wbp_kwh = parseInt(item["kWh WBP"]) || 0;
+                let denda_val = parseInt(item["Denda KVArh"]) || parseInt(item["KVArh Rupiah"]) || 0;
+                let tagihan_total = parseInt(item["Total Tagihan"]) || 0;
+
+                // Deteksi nilai tarif dasar per kWh langsung dari JSON jika tersedia
+                let tarifLwbpTerdeteksi = parseFloat(item["Tarif LWBP"]) || (TARIF_MASTER_DEFAULT[gol] ? TARIF_MASTER_DEFAULT[gol].lwbp : 735);
+                let tarifWbpTerdeteksi = parseFloat(item["Tarif WBP"]) || (TARIF_MASTER_DEFAULT[gol] ? TARIF_MASTER_DEFAULT[gol].wbp : (tarifLwbpTerdeteksi * 1.5));
+
+                if (consolidatedMap[key]) {
+                    consolidatedMap[key].lwbp += lwbp_kwh;
+                    consolidatedMap[key].wbp += wbp_kwh;
+                    consolidatedMap[key].denda += denda_val;
+                    consolidatedMap[key].tagihan += tagihan_total;
+                } else {
+                    consolidatedMap[key] = {
+                        idpel: idpel,
+                        nama: nama,
+                        gol: gol,
+                        lwbp: lwbp_kwh,
+                        wbp: wbp_kwh,
+                        denda: denda_val,
+                        tagihan: tagihan_total,
+                        tarifLwbp: tarifLwbpTerdeteksi,
+                        tarifWbp: tarifWbpTerdeteksi
+                    };
+                }
+            });
+
+            databaseGedung = Object.values(consolidatedMap).map((item, index) => {
+                return { id: index + 1, ...item };
+            });
+
+            buildSimulationTable();
+
+        } catch (error) {
+            console.error("Gagal memuat visualisasi data simulasi:", error);
+            alert(`Gagal memuat simulator: ${error.message}`);
+        } finally {
+            overlay.style.display = 'none';
+        }
+    }
+
+  async function loadDataSimulasi() {
+        const fileKeyRaw = document.getElementById('periodSelector').value;
+        const overlay = document.getElementById('loadingOverlay');
+        if(!fileKeyRaw) return;
+
+        const selectorEl = document.getElementById('periodSelector');
+        document.getElementById('periodeAktifText').innerText = selectorEl.options[selectorEl.selectedIndex].text;
+        overlay.style.display = 'flex';
+
+        try {
+            const listFiles = fileKeyRaw.split(',');
+            let rawCombinedData = [];
+
+            for (let file of listFiles) {
+                const response = await fetch(`data_tagihan/${file.trim()}.json`);
+                if (!response.ok) throw new Error(`File JSON data_tagihan/${file.trim()}.json tidak ditemukan.`);
+                const dataData = await response.json();
+                rawCombinedData = rawCombinedData.concat(dataData);
+            }
+
+            let consolidatedMap = {};
+            rawCombinedData.forEach(item => {
+                let idpel = item["ID Pelanggan"] || "Tanpa ID";
+                let nama = item["Nama Pelanggan"] || item["File Name"] || "Gedung Tidak Diketahui";
+                let key = idpel !== "Tanpa ID" ? idpel : nama;
+
+                // 1. Ambil nama golongan/tarif asli dari JSON untuk tampilan tekstual
+                let rawTarif = item["Golongan"] || item["Tarif"] || "S2";
+                
+                // 2. Ambil nilai tarif per kWh MURNI langsung dari JSON
+                let tarifLwbpTerdeteksi = parseFloat(item["Tarif LWBP"]) || 0;
+                let tarifWbpTerdeteksi = parseFloat(item["Tarif WBP"]) || 0;
+
+                // 3. Ekstrak angka daya untuk format tampilan (misal: 105000 -> 105.000 VA)
+                let angkaDaya = rawTarif.replace(/\D/g, ""); 
+                if (!angkaDaya && item["Daya"]) {
+                    angkaDaya = String(item["Daya"]).replace(/\D/g, "");
+                }
+                let dayaMentah = angkaDaya ? parseInt(angkaDaya).toLocaleString('id-ID') + " VA" : "—";
+
+                // 4. Bersihkan nama Golongan (ambil huruf depan seperti S1, S2, P1, B2 jika ada)
+                let namaGolBersih = "S2"; 
+                if (rawTarif.toUpperCase().includes("S1")) namaGolBersih = "S1";
+                else if (rawTarif.toUpperCase().includes("S2")) namaGolBersih = "S2";
+                else if (rawTarif.toUpperCase().includes("P1")) namaGolBersih = "P1";
+                else if (rawTarif.toUpperCase().includes("B2")) namaGolBersih = "B2";
+                else {
+                    // Jika kolom tarif di JSON hanya angka, tebak nama hurufnya berdasarkan tarif/daya
+                    if (tarifWbpTerdeteksi === 0 && tarifLwbpTerdeteksi <= 900) namaGolBersih = "S1";
+                    else if (nama.toUpperCase().includes("ASRAMA")) namaGolBersih = "P1";
+                    else if (nama.toLowerCase().includes("futsal")) namaGolBersih = "B2";
+                }
+
+                let lwbp_kwh = parseInt(item["kWh LWBP"]) || 0;
+                let wbp_kwh = parseInt(item["kWh WBP"]) || 0;
+                let denda_val = parseInt(item["Denda KVArh"]) || parseInt(item["KVArh Rupiah"]) || 0;
+                let tagihan_total = parseInt(item["Total Tagihan"]) || 0;
+
+                if (consolidatedMap[key]) {
+                    consolidatedMap[key].lwbp += lwbp_kwh;
+                    consolidatedMap[key].wbp += wbp_kwh;
+                    consolidatedMap[key].denda += denda_val;
+                    consolidatedMap[key].tagihan += tagihan_total;
+                } else {
+                    consolidatedMap[key] = {
+                        idpel: idpel,
+                        nama: nama,
+                        gol: namaGolBersih,
+                        dayaFormatted: dayaMentah,
+                        lwbp: lwbp_kwh,
+                        wbp: wbp_kwh,
+                        denda: denda_val,
+                        tagihan: tagihan_total,
+                        tarifLwbp: tarifLwbpTerdeteksi, // Digunakan mutlak untuk kalkulasi slider
+                        tarifWbp: tarifWbpTerdeteksi    // Digunakan mutlak untuk kalkulasi slider
+                    };
+                }
+            });
+
+            databaseGedung = Object.values(consolidatedMap).map((item, index) => {
+                return { id: index + 1, ...item };
+            });
+
+            buildSimulationTable();
+
+        } catch (error) {
+            console.error("Gagal memuat visualisasi data simulasi:", error);
+            alert(`Gagal memuat simulator: ${error.message}`);
+        } finally {
+            overlay.style.display = 'none';
+        }
+    }
+
+    function buildSimulationTable() {
+        const tbody = document.getElementById('simulationTableBody');
+        tbody.innerHTML = '';
+        shiftState = {};
+        dendaActiveState = {};
+
+        if(databaseGedung.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">Tidak ada data untuk disimulasikan.</td></tr>`;
+            return;
+        }
+
+        databaseGedung.forEach(g => {
+            shiftState[g.id] = 0; 
+            dendaActiveState[g.id] = true;
+
+            // Penentuan kelas badge warna hanya untuk estetika UI berdasarkan variabel g.gol hasil filter
+            let badgeClass = "bg-success text-white"; // default S2
+            if (g.gol === "S1") badgeClass = "bg-primary text-white";
+            else if (g.gol === "P1") badgeClass = "bg-danger text-white";
+            else if (g.gol === "B2") badgeClass = "bg-warning text-dark";
+
+            // KALKULASI MUTLAK: Menggunakan nilai g.tarifLwbp dan g.tarifWbp murni dari JSON hasil loadDataSimulasi
+            let costAktualGedung = (g.lwbp * g.tarifLwbp) + (g.wbp * g.tarifWbp) + g.denda;
+
+            // Format tampilan kombinasi Golongan dan Kapasitas Daya
+            let tampilanGolDaya = `${g.gol} - ${g.dayaFormatted}`;
+
+            const tr = document.createElement('tr');
+            tr.id = `row_${g.id}`;
+            tr.innerHTML = `
+                <td>
+                    <span class="fw-bold d-block text-dark" style="font-size:0.95rem;">${g.nama}</span>
+                    <span class="idpel-text"><i class="fa-solid fa-bolt text-warning me-1"></i> ${g.idpel}</span>
+                </td>
+                <td>
+                    <div class="mb-1">
+                        <span class="badge ${badgeClass} badge-tarif">Gol: ${tampilanGolDaya}</span>
+                        <small class="text-muted border-start ps-1" style="font-size:0.75rem;">WBP: Rp ${g.tarifWbp.toLocaleString('id-ID')}/kWh</small>
+                    </div>
+                    <div style="font-size:0.83rem;">☀️ LWBP: <b>${g.lwbp.toLocaleString('id-ID')}</b> kWh <small class="text-muted">(Rp ${g.tarifLwbp})</small></div>
+                    <div style="font-size:0.83rem;" class="${g.wbp > 0 ? 'text-warning fw-bold' : 'text-muted'}">🌙 WBP: <b>${g.wbp.toLocaleString('id-ID')}</b> kWh</div>
+                </td>
+                <td class="text-center">
+                    ${g.denda > 0 ? `
+                        <div class="form-check d-flex flex-column align-items-center justify-content-center">
+                            <input class="form-check-input denda-checkbox shadow-sm mb-1" type="checkbox" 
+                                   id="checkDenda_${g.id}" onchange="toggleSingleDung(${g.id}, this.checked)" checked>
+                            <span class="text-danger fw-bold" style="font-size:0.85rem;" id="txtDenda_${g.id}">Rp ${g.denda.toLocaleString('id-ID')}</span>
+                        </div>
+                    ` : `<span class="text-muted fs-7">—</span>`}
+                </td>
+                <td>
+                    <div class="d-flex justify-content-between slider-label mb-1">
+                        <span>Geser Beban WBP:</span>
+                        <span class="text-primary fw-bold" id="sliderVal_${g.id}">0%</span>
+                    </div>
+                    <input type="range" class="form-range" min="0" max="100" value="0" step="5" 
+                           id="slider_${g.id}" oninput="updateGedungShift(${g.id}, this.value)" ${g.wbp === 0 ? 'disabled' : ''}>
+                </td>
+                <td class="text-end">
+                    <div class="fw-bold text-dark" id="simCost_${g.id}">Rp ${Math.round(costAktualGedung).toLocaleString('id-ID')}</div>
+                    <small class="text-success fw-bold d-none" id="simSave_${g.id}"><i class="fa-solid fa-arrow-trend-down"></i> Hemat: Rp 0</small>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        calculateGlobalTotals();
+    }
+
+    function toggleSingleDung(id, isChecked) {
+        dendaActiveState[id] = isChecked;
+        let textDenda = document.getElementById(`txtDenda_${id}`);
+        if(isChecked) {
+            textDenda.classList.remove('text-decoration-line-through', 'text-muted');
+            textDenda.classList.add('text-danger');
+        } else {
+            textDenda.classList.remove('text-danger');
+            textDenda.classList.add('text-decoration-line-through', 'text-muted');
+        }
+
+        let sliderEl = document.getElementById(`slider_${id}`);
+        updateGedungShift(id, sliderEl.value);
+    }
+
+    function toggleAllDenda(isChecked) {
+        const checkboxes = document.querySelectorAll('.denda-checkbox');
+        checkboxes.forEach(cb => cb.checked = isChecked);
+
+        databaseGedung.forEach(g => {
+            if(g.denda > 0) {
+                dendaActiveState[g.id] = isChecked;
+                let textDenda = document.getElementById(`txtDenda_${g.id}`);
+                if(isChecked) {
+                    textDenda.className = "text-danger fw-bold";
+                } else {
+                    textDenda.className = "text-decoration-line-through text-muted fw-bold";
+                }
+            }
+        });
+
+        let badge = document.getElementById('masterDendaBadge');
+        if(isChecked) {
+            badge.innerText = "Aktif (Hitung)";
+            badge.className = "badge bg-dark ms-1";
+        } else {
+            badge.innerText = "Diabaikan (0)";
+            badge.className = "badge bg-secondary ms-1";
+        }
+
+        databaseGedung.forEach(g => {
+            let sliderEl = document.getElementById(`slider_${g.id}`);
+            let val = sliderEl ? sliderEl.value : 0;
+            
+            let dendaAktif = dendaActiveState[g.id] ? g.denda : 0;
+            let kwhDipindah = g.wbp * (val / 100);
+            let wbpBaru = g.wbp - kwhDipindah;
+            let lwbpBaru = g.lwbp + kwhDipindah;
+
+            let costBaru = (lwbpBaru * g.tarifLwbp) + (wbpBaru * g.tarifWbp) + dendaAktif;
+            document.getElementById(`simCost_${g.id}`).innerText = `Rp ${Math.round(costBaru).toLocaleString('id-ID')}`;
+        });
+
+        calculateGlobalTotals();
+    }
+
+    function updateGedungShift(id, val) {
+        shiftState[id] = parseFloat(val);
+        document.getElementById(`sliderVal_${id}`).innerText = `${val}%`;
+        
+        let g = databaseGedung.find(item => item.id === id);
+        let dendaAktif = dendaActiveState[id] ? g.denda : 0;
+
+        let kwhDipindah = g.wbp * (val / 100);
+        let wbpBaru = g.wbp - kwhDipindah;
+        let lwbpBaru = g.lwbp + kwhDipindah;
+
+        let costBaru = (lwbpBaru * g.tarifLwbp) + (wbpBaru * g.tarifWbp) + dendaAktif;
+        
+        let costAwalTanpaShift = (g.lwbp * g.tarifLwbp) + (g.wbp * g.tarifWbp) + dendaAktif;
+        let hemat = costAwalTanpaShift - costBaru;
+
+        document.getElementById(`simCost_${g.id}`).innerText = `Rp ${Math.round(costBaru).toLocaleString('id-ID')}`;
+        
+        let saveBadge = document.getElementById(`simSave_${g.id}`);
+        if (hemat > 0) {
+            saveBadge.classList.remove('d-none');
+            saveBadge.innerHTML = `<i class="fa-solid fa-arrow-trend-down"></i> Hemat: Rp ${Math.round(hemat).toLocaleString('id-ID')}`;
+        } else {
+            saveBadge.classList.add('d-none');
+        }
+
+        calculateGlobalTotals();
+    }
+
+    function calculateGlobalTotals() {
+        let globalAktual = 0;
+        let globalSimulasi = 0;
+        let globalKwh = 0;
+
+        databaseGedung.forEach(g => {
+            let dendaAktif = dendaActiveState[g.id] ? g.denda : 0;
+
+            // Hitung acuan aktual murni dasar sebelum modifikasi slider
+            let costAwal = (g.lwbp * g.tarifLwbp) + (g.wbp * g.tarifWbp) + dendaAktif;
+            globalAktual += costAwal;
+            globalKwh += (g.lwbp + g.wbp);
+
+            let pct = shiftState[g.id] || 0;
+            let kwhDipindah = g.wbp * (pct / 100);
+            let wbpBaru = g.wbp - kwhDipindah;
+            let lwbpBaru = g.lwbp + kwhDipindah;
+
+            let costBaru = (lwbpBaru * g.tarifLwbp) + (wbpBaru * g.tarifWbp) + dendaAktif;
+            globalSimulasi += costBaru;
+        });
+
+        let totalSaves = globalAktual - globalSimulasi;
+        let pctSaves = globalAktual > 0 ? ((totalSaves / globalAktual) * 100).toFixed(2) : 0;
+
+        document.getElementById('totalAktual').innerText = `Rp ${Math.round(globalAktual).toLocaleString('id-ID')}`;
+        document.getElementById('kwhAktual').innerText = `Total Konsumsi Jaringan: ${Math.round(globalKwh).toLocaleString('id-ID')} kWh`;
+        
+        document.getElementById('totalSimulasi').innerText = `Rp ${Math.round(globalSimulasi).toLocaleString('id-ID')}`;
+        document.getElementById('totalHemat').innerText = `Rp ${Math.round(totalSaves).toLocaleString('id-ID')}`;
+        document.getElementById('pctHemat').innerText = `${pctSaves}% Biaya Terpangkas`;
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        generateDropdownOptions();
+        loadDataSimulasi();
+    });
+</script>
+</body>
+</html>
