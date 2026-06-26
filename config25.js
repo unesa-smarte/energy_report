@@ -11,7 +11,7 @@ const DAFTAR_PERIODE_TAGIHAN = {
         //{ value: "lidah_Agustus_25", label: "Agustus 2025 (Lidah Wetan)" }, //datanya belum ready
         { value: "lidah_September_25", label: "September 2025 (Lidah Wetan)" },
         { value: "lidah_Oktober_25", label: "Oktober 2025 (Lidah Wetan)" },
-        { value: "lidah_Nopember_25", label: "Nopember 2025 (Lidah Wetan)" },
+        { value: "lidah_November_25", label: "Nopember 2025 (Lidah Wetan)" },
         { value: "lidah_Desember_25", label: "Desember 2025 (Lidah Wetan)" }
         // Bulan depan cukup tambah di sini, contoh:
         // { value: "lidah_juli_25", label: "Juli 2025 (Lidah Wetan)" }
@@ -27,7 +27,7 @@ const DAFTAR_PERIODE_TAGIHAN = {
         { value: "ktt_Agustus_25", label: "Agustus 2025 (Ketintang)" }, 
         { value: "ktt_September_25", label: "September 2025 (Ketintang)" },
         { value: "ktt_Oktober_25", label: "Juni Oktober (Ketintang)" },
-        { value: "ktt_Nopember_25", label: "Nopember 2025 (Ketintang)" },
+        { value: "ktt_November_25", label: "Nopember 2025 (Ketintang)" },
         { value: "ktt_Desember_25", label: "Desember 2025 (Ketintang)" }
     ],
     "GABUNGAN":[
@@ -42,9 +42,9 @@ const DAFTAR_PERIODE_TAGIHAN = {
         //{ value: "lidah_Agustus_25,ktt_Agustus_25", label: "🌍 Total Gabungan 2 Kampus (Agustus 2025)" },
         { value: "lidah_September_25,ktt_September_25", label: "🌍 Total Gabungan 2 Kampus (September 2025)" },
         { value: "lidah_Oktober_25,ktt_Oktober_25", label: "🌍 Total Gabungan 2 Kampus (Oktober 2025)" },
-        { value: "lidah_Nopember_25,ktt_Nopember_25", label: "🌍 Total Gabungan 2 Kampus (Nopember 2025)" },
+        { value: "lidah_November_25,ktt_November_25", label: "🌍 Total Gabungan 2 Kampus (November 2025)" },
         { value: "lidah_Desember_25,ktt_Desember_25", label: "🌍 Total Gabungan 2 Kampus (Desember 2025)" },
-        { value: "lidah_Januari_25,lidah_Februari_25,lidah_Maret_25,lidah_April_25,lidah_Mei_25,lidah_Juni_25,lidah_Juli_25,lidah_September_25,lidah_Oktober_25,lidah_Nopember_25,lidah_Desember_25,ktt_Januari_25,ktt_Februari_25,ktt_Maret_25,ktt_April_25,ktt_Mei_25,ktt_Juni_25,ktt_Juli_25,ktt_Agustus_25,ktt_September_25,ktt_Oktober_25,ktt_Nopember_25,ktt_Desember_25", label: "📊 Total Rekap Tahunan 2025 (Semua Data)" }
+        { value: "lidah_Januari_25,lidah_Februari_25,lidah_Maret_25,lidah_April_25,lidah_Mei_25,lidah_Juni_25,lidah_Juli_25,lidah_September_25,lidah_Oktober_25,lidah_November_25,lidah_Desember_25,ktt_Januari_25,ktt_Februari_25,ktt_Maret_25,ktt_April_25,ktt_Mei_25,ktt_Juni_25,ktt_Juli_25,ktt_Agustus_25,ktt_September_25,ktt_Oktober_25,ktt_November_25,ktt_Desember_25", label: "📊 Total Rekap Tahunan 2025 (Semua Data)" }
     
     ]
 };
