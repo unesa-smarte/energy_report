@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Audit Energi & Karbon Unesa</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: none; border-radius: 12px; margin-bottom: 25px; }
+        .metric-card { border-left: 6px solid; border-radius: 8px; transition: transform 0.2s; }
+        .metric-card:hover { transform: translateY(-3px); }
+        .bg-gradient-unesa { background: linear-gradient(135deg, #1e3c72 0%, #157347 100%); color: white; }
+        .gedung-check-label { font-size: 0.85rem; font-weight: 500; cursor: pointer; }
+        .check-container { max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px; padding: 12px; background: #fff; }
+        .loading-overlay { display: none; background: rgba(255,255,255,0.7); position: absolute; top:0; left:0; width:100%; height:100%; z-index:10; border-radius:12px; align-items:center; justify-content:center; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid px-4 py-4">
+    <div class="card bg-gradient-unesa p-4 text-center mb-4 shadow">
+        <h1 class="fw-bold"><i class="fa-solid fa-chart-pie"></i> Dashboard Analisis Energi & Emisi Karbon</h1>
+        <p class="mb-0 opacity-75">Unesa Smart Energy | Audit Energi - Jejak Karbon — Periode: <span id="periodeAktif" class="fw-bold text-warning">-</span></p>
+    </div>
+
+    <div class="card p-3 mb-4 position-relative">
+        <div class="row g-3 align-items-center">
+            
+            <div class="col-md-4">
+                <label class="form-label fw-bold"><i class="fa-solid fa-calendar-days text-warning"></i> Pilih Periode Tagihan</label>
+                <select id="periodSelector" class="form-select fw-bold border-warning" onchange="loadDataDariJson()">
+                    </select>
+            </div>
+            
+            <div class="col-md-4">
+                <label class="form-label fw-bold"><i class="fa-solid fa-sliders text-secondary"></i> Mode Tampilan Dashboard</label>
+                <select id="viewMode" class="form-select fw-bold" onchange="toggleViewMode()">
+                    <option value="summary" selected>📊 Ringkasan Beban & Temuan Audit</option>
+                    <option value="per_gedung">🔍 Detail Penggunaan LWBP vs WBP</option>
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label fw-bold"><i class="fa-solid fa-ruler-combined text-success"></i> Est. Luas Area (m²)</label>
+                <input type="number" id="totalArea" class="form-control fw-bold" value="65000" min="1" onchange="renderDashboard()">
+                
+            </div>
+            
+            <div class="col-md-2 text-end">
+               <a href="energi2025.html" target="_blank" class="btn btn-dark fw-bold btn-sm px-3 shadow-sm mt-3">
+               <i class="fa-solid fa-chart-line text-warning me-2"></i> Tren Bulanan 2026
+                </a>
+                <a href="simulasi25.html" class="btn btn-warning btn-sm fw-bold text-dark mt-3"><i class="fa-solid fa-sliders"></i> Simulator Load Shift</a>
+                <a href="index.html" class="btn btn-outline-secondary fw-bold mt-4"><i class="fa-solid fa-arrow-left"></i> Kembali</a>
+            </div>
+        </div>
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="spinner-border text-primary" role="status"></div><strong class="ms-2">Memuat File Data JSON...</strong>
+        </div>
+    </div>
+
+    <div class="row mb-2">
+        <div class="col-md-3">
+            <div class="card p-3 metric-card bg-white" style="border-left-color: #3498db;">
+                <small class="text-muted fw-bold">KONSUMSI LWBP</small>
+                <h3 class="fw-bold my-1 text-dark" id="mLwbp">0 <span class="fs-6 text-muted">kWh</span></h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 metric-card bg-white" style="border-left-color: #e67e22;">
+                <small class="text-muted fw-bold">KONSUMSI WBP</small>
+                <h3 class="fw-bold my-1 text-warning" id="mWbp">0 <span class="fs-6 text-muted">kWh</span></h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 metric-card bg-white" style="border-left-color: #2ecc71;">
+                <small class="text-muted fw-bold">INTENSITAS EMISI CO₂</small>
+                <h3 class="fw-bold my-1 text-success" id="mCarbon">0 <span class="fs-6 text-muted">kg CO₂/m²</span></h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 metric-card bg-white" style="border-left-color: #e74c3c;">
+                <small class="text-muted fw-bold">TOTAL TAGIHAN REKENING</small>
+                <h3 class="fw-bold my-1 text-danger" id="mCost">Rp 0</h3>
+            </div>
+        </div>
+    </div>
+
+    <div id="summarySection">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card p-4">
+                    <h5 class="fw-bold mb-3"><i class="fa-solid fa-cloud text-success"></i> 10 Gedung Penyumbang Emisi Karbon Tertinggi</h5>
+                    <div style="position: relative; height: 380px;"><canvas id="chartTopCarbon"></canvas></div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-4">
+                    <h5 class="fw-bold mb-3"><i class="fa-solid fa-triangle-exclamation text-warning"></i> Temuan Audit Distribusi Tarif</h5>
+                    <div id="auditAlerts" class="overflow-auto" style="max-height: 380px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="detailSection" class="d-none">
+        <div class="row">
+            <div class="col-12">
+                <div class="card p-4 mb-4">
+                    <h5 class="fw-bold mb-3"><i class="fa-solid fa-chart-gantt text-primary"></i> Proporsi Penggunaan Energi: LWBP vs WBP</h5>
+                    <div style="position: relative; height: 450px;"><canvas id="chartBreakdown"></canvas></div>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="card p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold text-secondary m-0"><i class="fa-solid fa-filter"></i> Filter Centang Gedung</h6>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary fw-bold me-1" onclick="checkAllGedung(true)">Centang Semua</button>
+                            <button class="btn btn-sm btn-outline-secondary fw-bold" onclick="checkAllGedung(false)">Hapus Semua</button>
+                        </div>
+                    </div>
+                    <div class="check-container" id="gedungSelectorContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="config25.js"></script>
+
+<script>
+    let databaseGedung = [];
+    let currentCharts = {};
+    let gedungSelection = {};
+
+
+    // Menghasilkan menu Dropdown dari config.js
+    function generateDropdownOptions() {
+        const selector = document.getElementById('periodSelector');
+        selector.innerHTML = ''; 
+
+        const mapping = [
+            { key: "LIDAH_WETAN", label: "🏢 Kampus Lidah Wetan (Bulanan)" },
+            { key: "KETINTANG", label: "🏫 Kampus Ketintang (Bulanan)" },
+            { key: "MUSTOPO", label: "🏛️ Kampus Mustopo (Bulanan)" },
+            { key: "GABUNGAN", label: "🌍 Gabungan / Tahunan" }
+        ];
+
+        mapping.forEach(groupInfo => {
+            const items = DAFTAR_PERIODE_TAGIHAN[groupInfo.key];
+            if (items && items.length > 0) {
+                let group = document.createElement('optgroup');
+                group.label = groupInfo.label;
+                items.forEach(p => {
+                    let opt = new Option(p.label, p.value);
+                    group.appendChild(opt);
+                });
+                selector.appendChild(group);
+            }
+        });
+    }
+
+    // Mengambil data JSON secara dinamis
+    async function loadDataDariJson() {
+        const fileKeyRaw = document.getElementById('periodSelector').value;
+        const overlay = document.getElementById('loadingOverlay');
+        
+        if(!fileKeyRaw) return;
+
+        const selectorEl = document.getElementById('periodSelector');
+        const textAktif = selectorEl.options[selectorEl.selectedIndex].text;
+        document.getElementById('periodeAktif').innerText = textAktif;
+        
+        overlay.style.display = 'flex';
+
+        try {
+            const listFiles = fileKeyRaw.split(',');
+            let rawCombinedData = [];
+
+            for (let file of listFiles) {
+                const response = await fetch(`data_tagihan/${file.trim()}.json`);
+                if (!response.ok) {
+                    throw new Error(`File JSON data_tagihan/${file.trim()}.json tidak ditemukan.`);
+                }
+                const dataData = await response.json();
+                
+                const dataWithRegion = dataData.map(item => {
+                    let wilayahDeteksi = "SEMUA";
+                    if (file.toLowerCase().includes("lidah")) wilayahDeteksi = "LIDAH_WETAN";
+                    else if (file.toLowerCase().includes("ktt")) wilayahDeteksi = "KETINTANG";
+                    else if (file.toLowerCase().includes("mus")) wilayahDeteksi = "MUSTOPO";
+                    
+                    return {
+                        idpel: item["ID Pelanggan"] || "Tanpa ID",
+                        nama: item["Nama Pelanggan"] || item["File Name"] || "Gedung Tidak Diketahui",
+                        wilayah: item["Wilayah"] || wilayahDeteksi, 
+                        lwbp: parseInt(item["kWh LWBP"]) || 0,
+                        wbp: parseInt(item["kWh WBP"]) || 0,
+                        tagihan: parseInt(item["Total Tagihan"]) || 0
+                    };
+                });
+
+                rawCombinedData = rawCombinedData.concat(dataWithRegion);
+            }
+
+            let consolidatedMap = {};
+            rawCombinedData.forEach(item => {
+                let key = item.idpel !== "Tanpa ID" ? item.idpel : item.nama;
+                if (consolidatedMap[key]) {
+                    consolidatedMap[key].lwbp += item.lwbp;
+                    consolidatedMap[key].wbp += item.wbp;
+                    consolidatedMap[key].tagihan += item.tagihan;
+                } else {
+                    consolidatedMap[key] = { ...item };
+                }
+            });
+
+            databaseGedung = Object.values(consolidatedMap).map((item, index) => {
+                return { id: index + 1, ...item };
+            });
+
+            // Langsung inisialisasi status pilihan dan tampilkan data
+            initSelectionStates();
+            renderGedungSelector();
+            renderDashboard();
+
+        } catch (error) {
+            console.error("Gagal memuat visualisasi data:", error);
+            alert(`Gagal menggabungkan data: ${error.message}\nPastikan semua file JSON terkait sudah di-push.`);
+        } finally {
+            overlay.style.display = 'none';
+        }
+    }
+
+    function initSelectionStates() {
+        gedungSelection = {};
+        databaseGedung.forEach(g => {
+            gedungSelection[g.id] = true;
+        });
+    }
+
+    function toggleViewMode() {
+        const mode = document.getElementById('viewMode').value;
+        if (mode === 'summary') {
+            document.getElementById('summarySection').classList.remove('d-none');
+            document.getElementById('detailSection').classList.add('d-none');
+        } else {
+            document.getElementById('summarySection').classList.add('d-none');
+            document.getElementById('detailSection').classList.remove('d-none');
+        }
+        renderDashboard();
+    }
+
+    function renderGedungSelector() {
+        const container = document.getElementById('gedungSelectorContainer');
+        container.innerHTML = '';
+
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'row text-dark';
+
+        databaseGedung.forEach(g => {
+            const isChecked = gedungSelection[g.id] !== false;
+            const col = document.createElement('div');
+            col.className = 'col-xl-3 col-md-4 col-sm-6 mb-2';
+            col.innerHTML = `
+                <div class="form-check border p-2 rounded bg-light shadow-sm">
+                    <input class="form-check-input ms-1 me-2 gedung-cb" type="checkbox" id="cbGedung_${g.id}" 
+                           onchange="onGedungCheckboxChange(${g.id}, this.checked)" ${isChecked ? 'checked' : ''}>
+                    <label class="form-check-label gedung-check-label text-truncate" style="max-width:80%;" for="cbGedung_${g.id}" title="${g.nama}">
+                        <b>${g.nama}</b><br><small class="text-muted">${g.idpel}</small>
+                    </label>
+                </div>
+            `;
+            rowDiv.appendChild(col);
+        });
+        container.appendChild(rowDiv);
+    }
+
+    function onGedungCheckboxChange(id, isChecked) {
+        gedungSelection[id] = isChecked;
+        renderDashboard();
+    }
+
+    function checkAllGedung(status) {
+        databaseGedung.forEach(g => {
+            gedungSelection[g.id] = status;
+        });
+
+        const checkboxes = document.querySelectorAll('.gedung-cb');
+        checkboxes.forEach(cb => cb.checked = status);
+
+        renderDashboard();
+    }
+
+    function renderDashboard() {
+        let luasArea = parseFloat(document.getElementById('totalArea').value) || 1;
+        let dataTerpilih = databaseGedung.filter(item => gedungSelection[item.id] !== false);
+
+        let totalLwbp = 0, totalWbp = 0, totalCost = 0;
+        dataTerpilih.forEach(d => {
+            totalLwbp += d.lwbp;
+            totalWbp += d.wbp;
+            totalCost += d.tagihan;
+        });
+        let totalKwh = totalLwbp + totalWbp;
+        
+        let totalCarbonMurni = totalKwh * 0.85; 
+        let intensitasCarbon = totalCarbonMurni / luasArea;
+
+        let pctLwbp = totalKwh > 0 ? ((totalLwbp / totalKwh) * 100).toFixed(1) : 0;
+        let pctWbp = totalKwh > 0 ? ((totalWbp / totalKwh) * 100).toFixed(1) : 0;
+
+        document.getElementById('mLwbp').innerHTML = `${Math.round(totalLwbp).toLocaleString('id-ID')} <span class="fs-6 text-muted">kWh</span> <span class="badge bg-primary ms-1">${pctLwbp}%</span>`;
+        document.getElementById('mWbp').innerHTML = `${Math.round(totalWbp).toLocaleString('id-ID')} <span class="fs-6 text-muted">kWh</span> <span class="badge bg-warning text-dark ms-1">${pctWbp}%</span>`;
+        document.getElementById('mCarbon').innerHTML = `${intensitasCarbon.toFixed(2)} <span class="fs-6 text-muted">kg CO₂/m²</span>`;
+        document.getElementById('mCost').innerText = `Rp ${totalCost.toLocaleString('id-ID')}`;
+
+        // 1. GRAFIK TOP 10 EMISI CARBON
+        let sortedData = [...dataTerpilih].sort((a, b) => (b.lwbp + b.wbp) - (a.lwbp + a.wbp));
+        let topGedung = sortedData.slice(0, 10);
+
+        if (currentCharts.topCarbon) currentCharts.topCarbon.destroy();
+        let ctx1 = document.getElementById('chartTopCarbon').getContext('2d');
+        currentCharts.topCarbon = new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: topGedung.map(d => [d.nama, ` ${d.idpel}`]),
+                datasets: [
+                    {
+                        label: 'Emisi dari LWBP (kg CO₂)',
+                        data: topGedung.map(d => Math.round(d.lwbp * 0.85)),
+                        backgroundColor: '#3498db'
+                    },
+                    {
+                        label: 'Emisi dari WBP (kg CO₂)',
+                        data: topGedung.map(d => Math.round(d.wbp * 0.85)),
+                        backgroundColor: '#e67e22'
+                    }
+                ]
+            },
+            options: { 
+                indexAxis: 'y', 
+                responsive: true, 
+                maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, ticks: { font: { size: 11 } } }
+                }
+            }
+        });
+
+        // 2. GRAFIK DETIL BREAKDOWN KESELURUHAN
+        if (currentCharts.breakdown) currentCharts.breakdown.destroy();
+        let ctx2 = document.getElementById('chartBreakdown').getContext('2d');
+        currentCharts.breakdown = new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: dataTerpilih.map(d => [d.nama, ` ${d.idpel}`]),
+                datasets: [
+                    {
+                        label: 'Konsumsi LWBP (kWh)',
+                        data: dataTerpilih.map(d => d.lwbp),
+                        backgroundColor: '#3498db'
+                    },
+                    {
+                        label: 'Konsumsi WBP (kWh)',
+                        data: dataTerpilih.map(d => d.wbp),
+                        backgroundColor: '#e67e22'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true, ticks: { autoSkip: false, maxRotation: 90, minRotation: 90, font: { size: 10 } } },
+                    y: { stacked: true }
+                }
+            }
+        });
+
+        // 3. GENERATE ALERTS AUDIT
+        let alertBox = document.getElementById('auditAlerts');
+        alertBox.innerHTML = "";
+        let count = 0;
+
+        dataTerpilih.forEach(d => {
+            let totalGedungKwh = d.lwbp + d.wbp;
+            let rasioWbp = totalGedungKwh > 0 ? (d.wbp / totalGedungKwh) * 100 : 0;
+            
+            if (rasioWbp > 10) {
+                count++;
+                alertBox.innerHTML += `
+                    <div class="alert alert-warning p-2 mb-2" style="font-size: 13px; border-left: 4px solid #e67e22;">
+                        <i class="fa-solid fa-clock"></i> <b>${d.nama}</b><br>
+                        Rasio WBP Tinggi: <b>${rasioWbp.toFixed(1)}%</b>.
+                    </div>`;
+            }
+        });
+
+        if (count === 0) {
+            alertBox.innerHTML = `<div class="text-center text-muted py-5"><i class="fa-solid fa-circle-check text-success fs-2 mb-2"></i><br>Beban puncak efisien.</div>`;
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        generateDropdownOptions(); 
+        loadDataDariJson();        
+    });
+</script>    
+</body>
+</html>
