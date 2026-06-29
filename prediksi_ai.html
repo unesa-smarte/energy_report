@@ -1,146 +1,190 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚡ AI Pemodelan - Prediksi Konsumsi Listrik</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #f4f6f9; }
+        .ai-card { border: none; border-radius: 15px; box-shadow: 0 4px 25px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-xl-11">
+            
+            <div class="d-flex align-items-center justify-content-between mb-4 bg-dark text-white p-3 rounded-3 shadow-sm">
+                <h4 class="mb-0 fw-bold"><i class="fa-solid fa-brain text-info me-2"></i> AI Multi-Model Forecasting</h4>
+                <button class="btn btn-sm btn-outline-light" onclick="window.close()">Tutup</button>
+            </div>
+
+            <div class="card ai-card bg-white p-4">
+                <!-- MENU PEMILIHAN MODEL -->
+                <div class="row align-items-center mb-4 border-bottom pb-3">
+                    <div class="col-md-6">
+                        <h5 class="fw-bold mb-1 text-secondary">Pilih Algoritma Pemodelan:</h5>
+                        <small class="text-muted">Model statistik klasik berjalan lokal, model advanced disiapkan untuk integrasi backend</small>
+                    </div>
+                    <div class="col-md-4">
+                        <select id="selectModel" class="form-select fw-bold border-primary" onchange="gantiModelAI()">
+                            <option value="holtwinters">1. Holt-Winters Seasonal (Rekomendasi - Lokal)</option>
+                            <option value="linear">2. Regresi Linear Sederhana (Lokal)</option>
+                            <option value="sarimax" disabled>3. SARIMAX Model (Butuh Backend Python) 🔒</option>
+                            <option value="lstm" disabled>4. LSTM Deep Learning (Butuh Data > 3 Tahun) 🔒</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 text-end">
+                        <div id="aiStatus" class="badge bg-success p-2">Siap</div>
+                    </div>
+                </div>
+
+                <div id="canvasContainer" style="height: 480px; position: relative;">
+                    <canvas id="chartPrediksiAI"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 <script>
+// Variabel Global Data
+let dataKwhHistorisGlobal = Array(18).fill(0);
+let chartInstance = null;
+
+const masterPeriode = [
+    { id: 0, label: "Jan 25", fileKeyword: "Januari_25" }, { id: 1, label: "Feb 25", fileKeyword: "Februari_25" },
+    { id: 2, label: "Mar 25", fileKeyword: "Maret_25" }, { id: 3, label: "Apr 25", fileKeyword: "April_25" },
+    { id: 4, label: "Mei 25", fileKeyword: "Mei_25" }, { id: 5, label: "Jun 25", fileKeyword: "Juni_25" },
+    { id: 6, label: "Jul 25", fileKeyword: "Juli_25" }, { id: 7, label: "Agu 25", fileKeyword: "Agustus_25" },
+    { id: 8, label: "Sep 25", fileKeyword: "September_25" }, { id: 9, label: "Okt 25", fileKeyword: "Oktober_25" },
+    { id: 10, label: "Nov 25", fileKeyword: "November_25" }, { id: 11, label: "Des 25", fileKeyword: "Desember_25" },
+    { id: 12, label: "Jan 26", fileKeyword: "Januari_26" }, { id: 13, label: "Feb 26", fileKeyword: "Februari_26" },
+    { id: 14, label: "Mar 26", fileKeyword: "Maret_26" }, { id: 15, label: "Apr 26", fileKeyword: "April_26" },
+    { id: 16, label: "Mei 26", fileKeyword: "Mei_26" }, { id: 17, label: "Jun 26", fileKeyword: "Juni_26" }
+];
+
+const targetPrediksi = [
+    { id: 18, label: "Jul 26" }, { id: 19, label: "Agu 26" }, { id: 20, label: "Sep 26" },
+    { id: 21, label: "Okt 26" }, { id: 22, label: "Nov 26" }, { id: 23, label: "Des 26" },
+    { id: 24, label: "Jan 27" }, { id: 25, label: "Feb 27" }, { id: 26, label: "Mar 27" },
+    { id: 27, label: "Apr 27" }, { id: 28, label: "Mei 27" }, { id: 29, label: "Jun 27" }
+];
+
 document.addEventListener("DOMContentLoaded", function() {
-    inisialisasiPrediksiAI();
+    muatDanInisialisasiData();
 });
 
-async function inisialisasiPrediksiAI() {
-    const statusEl = document.getElementById('aiStatus');
+async function muatDanInisialisasiData() {
     const daftarKampus = ["ktt", "lidah", "mus"];
-
-    const masterPeriode = [
-        { id: 0, label: "Jan 25", fileKeyword: "Januari_25" },
-        { id: 1, label: "Feb 25", fileKeyword: "Februari_25" },
-        { id: 2, label: "Mar 25", fileKeyword: "Maret_25" },
-        { id: 3, label: "Apr 25", fileKeyword: "April_25" },
-        { id: 4, label: "Mei 25", fileKeyword: "Mei_25" },
-        { id: 5, label: "Jun 25", fileKeyword: "Juni_25" },
-        { id: 6, label: "Jul 25", fileKeyword: "Juli_25" },
-        { id: 7, label: "Agu 25", fileKeyword: "Agustus_25" },
-        { id: 8, label: "Sep 25", fileKeyword: "September_25" },
-        { id: 9, label: "Okt 25", fileKeyword: "Oktober_25" },
-        { id: 10, label: "Nov 25", fileKeyword: "November_25" },
-        { id: 11, label: "Des 25", fileKeyword: "Desember_25" },
-        { id: 12, label: "Jan 26", fileKeyword: "Januari_26" },
-        { id: 13, label: "Feb 26", fileKeyword: "Februari_26" },
-        { id: 14, label: "Mar 26", fileKeyword: "Maret_26" },
-        { id: 15, label: "Apr 26", fileKeyword: "April_26" },
-        { id: 16, label: "Mei 26", fileKeyword: "Mei_26" },
-        { id: 17, label: "Jun 26", fileKeyword: "Juni_26" }
-    ];
-
-    const targetPrediksi = [
-        { id: 18, label: "Jul 26" }, { id: 19, label: "Agu 26" }, { id: 20, label: "Sep 26" },
-        { id: 21, label: "Okt 26" }, { id: 22, label: "Nov 26" }, { id: 23, label: "Des 26" },
-        { id: 24, label: "Jan 27" }, { id: 25, label: "Feb 27" }, { id: 26, label: "Mar 27" },
-        { id: 27, label: "Apr 27" }, { id: 28, label: "Mei 27" }, { id: 29, label: "Jun 27" }
-    ];
-
-    let dataKwhHistoris = Array(18).fill(0);
-
     try {
-        // 1. BACA DATA JSON
         for (let p of masterPeriode) {
             for (let kampus of daftarKampus) {
                 let namaFile = `${kampus}_${p.fileKeyword}.json`;
                 const response = await fetch(`data_tagihan/${namaFile}`);
                 if (!response.ok) continue;
-                
                 const dataJson = await response.json();
                 dataJson.forEach(item => {
                     let lwbp = parseInt(item["kWh LWBP"]) || parseInt(item["LWBP"]) || 0;
                     let wbp = parseInt(item["kWh WBP"]) || parseInt(item["WBP"]) || 0;
-                    dataKwhHistoris[p.id] += (lwbp + wbp);
+                    dataKwhHistorisGlobal[p.id] += (lwbp + wbp);
                 });
             }
         }
-
-        // Filter data jika ada bulan yang kosong/tidak terbaca di awal agar tidak merusak tren
-        const xValid = [];
-        const yValid = [];
-        dataKwhHistoris.forEach((val, idx) => {
-            if (val > 0) {
-                xValid.push(idx);
-                yValid.push(val);
-            }
-        });
-
-        if (xValid.length === 0) {
-            throw new Error("Semua data file JSON terbaca 0 kWh. Periksa penamaan file atau key di dalam JSON Anda.");
-        }
-
-        // 2. PEMODELAN MATEMATIS (Regresi Polinomial Derajat 2 / Tren Kurva)
-        // Rumus ini menggantikan TensorFlow untuk menghindari masalah skala data jomplang (Vanishing Gradient)
-        const hasilPrediksiArray = hitungTrenPolinomial(xValid, yValid, targetPrediksi.map(p => p.id));
-
-        statusEl.className = "badge bg-success status-badge text-white";
-        statusEl.innerHTML = "<i class='fa-solid fa-check me-1'></i> Model Tren Siap";
-
-        // 3. RENDER GRAFIK
-        tampilkanGrafikGabungan(masterPeriode, targetPrediksi, dataKwhHistoris, hasilPrediksiArray);
-
+        gantiModelAI(); // Jalankan kalkulasi model pertama kali setelah load data
     } catch (error) {
         console.error(error);
-        statusEl.className = "badge bg-danger status-badge text-white";
-        statusEl.innerHTML = error.message || "Error Memproses Data";
     }
 }
 
-// Algoritma Matrix Least Squares untuk mendapatkan Kurva Tren Penggunaan Listrik
-function hitungTrenPolinomial(x, y, xTarget) {
-    let n = x.length;
-    let sumX = 0, sumX2 = 0, sumX3 = 0, sumX4 = 0;
-    let sumY = 0, sumXY = 0, sumX2Y = 0;
+function gantiModelAI() {
+    const modelDipilih = document.getElementById("selectModel").value;
+    let hasilPrediksi = [];
 
-    for (let i = 0; i < n; i++) {
-        let xi = x[i];
-        let yi = y[i];
-        let xi2 = xi * xi;
-
-        sumX += xi;
-        sumX2 += xi2;
-        sumX3 += xi2 * xi;
-        sumX4 += xi2 * xi2;
-        sumY += yi;
-        sumXY += xi * yi;
-        sumX2Y += xi2 * yi;
+    if (modelDipilih === "holtwinters") {
+        hasilPrediksi = hitungHoltWinters(dataKwhHistorisGlobal, 12);
+    } else if (modelDipilih === "linear") {
+        hasilPrediksi = hitungRegresiLinear(dataKwhHistorisGlobal, targetPrediksi.map(p => p.id));
     }
 
-    // Penyelesaian persamaan linear matriks 3x3 (Metode Cramer Sederhana)
-    let d = n * (sumX2 * sumX4 - sumX3 * sumX3) - sumX * (sumX * sumX4 - sumX3 * sumX2) + sumX2 * (sumX * sumX3 - sumX2 * sumX2);
+    tampilkanGrafik(hasilPrediksi);
+}
+
+// MODEL 1: Holt-Winters Exponential Smoothing Sederhana (Menangkap Pola Musiman 12 Bulanan)
+function hitungHoltWinters(data, langkahKeDepan) {
+    const p = 12; // Periode musiman bulanan (Jan ketemu Jan lagi)
+    if (data.length < p) return Array(langkahKeDepan).fill(data[data.length-1]);
+
+    // Inisialisasi alpha, beta, gamma secara moderat
+    const alpha = 0.3;
+    const beta = 0.1;
+    const gamma = 0.4;
+
+    let level = data[0];
+    let trend = 0;
+    let musiman = Array(p).fill(1);
+
+    // Estimasi awal musiman sederhana
+    for(let i=0; i<p; i++) {
+        if(data[i] && level) musiman[i] = data[i] / level;
+    }
+
+    // Evaluasi data historis
+    for (let i = 0; i < data.length; i++) {
+        let value = data[i];
+        if (value === 0) value = level; // handle data kosong
+
+        let levelLama = level;
+        let idxMusiman = i % p;
+
+        level = alpha * (value / musiman[idxMusiman]) + (1 - alpha) * (levelLama + trend);
+        trend = beta * (level - levelLama) + (1 - beta) * trend;
+        musiman[idxMusiman] = gamma * (value / level) + (1 - gamma) * musiman[idxMusiman];
+    }
+
+    // Lakukan Proyeksi ke Depan
+    let output = [];
+    for (let m = 1; m <= langkahKeDepan; m++) {
+        let idxTargetMusiman = (data.length + m - 1) % p;
+        let nilaiPred = (level + m * trend) * musiman[idxTargetMusiman];
+        output.push(nilaiPred);
+    }
+    return output;
+}
+
+// MODEL 2: Regresi Linear Tradisional (Sumbu Trend Lurus)
+function hitungRegresiLinear(data, xTarget) {
+    let n = data.length;
+    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+    for(let i=0; i<n; i++) {
+        sumX += i;
+        sumY += data[i];
+        sumXY += i * data[i];
+        sumX2 += i * i;
+    }
+    let slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    let intercept = (sumY - slope * sumX) / n;
     
-    if (Math.abs(d) < 0.1) {
-        // Fallback ke Linear biasa jika matriks gagal/singular
-        let m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-        let c = (sumY - m * sumX) / n;
-        return xTarget.map(tx => m * tx + c);
-    }
-
-    let da = sumY * (sumX2 * sumX4 - sumX3 * sumX3) - sumX * (sumXY * sumX4 - sumX3 * sumX2Y) + sumX2 * (sumXY * sumX3 - sumX2Y * sumX2);
-    let db = n * (sumXY * sumX4 - sumX2Y * sumX3) - sumY * (sumX * sumX4 - sumX3 * sumX2) + sumX2 * (sumX * sumX2Y - sumXY * sumX2);
-    let dc = n * (sumX2 * sumX2Y - sumXY * sumX3) - sumX * (sumX * sumX2Y - sumX2 * sumXY) + sumY * (sumX * sumX3 - sumX2 * sumX2);
-
-    let a = da / d; // Koefisien x^2
-    let b = db / d; // Koefisien x
-    let c = dc / d; // Konstanta intercept
-
-    // Masukkan target bulan masa depan (18-29) ke dalam rumus kurva tren
-    return xTarget.map(tx => (a * tx * tx) + (b * tx) + c);
+    return xTarget.map(tx => slope * tx + intercept);
 }
 
-function tampilkanGrafikGabungan(masterPeriode, targetPrediksi, dataRiil, dataPrediksi) {
+function tampilkanGrafik(dataPrediksi) {
     const ctx = document.getElementById('chartPrediksiAI').getContext('2d');
-    
+    if (chartInstance) chartInstance.destroy(); // Hancurkan grafik lama sebelum membuat yang baru
+
     const semuaLabelSumbuX = [...masterPeriode.map(p => p.label), ...targetPrediksi.map(p => p.label)];
-    const datasetRiil = [...dataRiil, ...Array(12).fill(null)];
+    const datasetRiil = [...dataKwhHistorisGlobal, ...Array(12).fill(null)];
     
     const datasetPrediksi = Array(17).fill(null);
-    datasetPrediksi.push(dataRiil[17]); 
-    
-    dataPrediksi.forEach(nilai => {
-        datasetPrediksi.push(nilai < 0 ? 0 : Math.round(nilai)); // Mencegah nilai minus jika tren drop ekstrim
-    });
+    datasetPrediksi.push(dataKwhHistorisGlobal[17]); 
+    dataPrediksi.forEach(nilai => datasetPrediksi.push(Math.round(nilai)));
 
-    new Chart(ctx, {
+    chartInstance = new Chart(ctx, {
         type: 'line',
         data: {
             labels: semuaLabelSumbuX,
@@ -150,36 +194,29 @@ function tampilkanGrafikGabungan(masterPeriode, targetPrediksi, dataRiil, dataPr
                     data: datasetRiil,
                     borderColor: '#1e3c72',
                     backgroundColor: 'rgba(30, 60, 114, 0.1)',
-                    borderWidth: 3.5,
-                    pointRadius: 4,
-                    tension: 0.2,
+                    borderWidth: 3,
                     fill: true
                 },
                 {
-                    label: '🔮 Proyeksi Tren Statistik (1 Tahun Kedepan)',
+                    label: '🔮 Proyeksi Model Dipilih',
                     data: datasetPrediksi,
                     borderColor: '#dc3545',
-                    backgroundColor: 'transparent',
                     borderWidth: 3,
-                    borderDash: [6, 6],
-                    pointRadius: 5,
+                    borderDash: [5, 5],
                     pointBackgroundColor: '#dc3545',
-                    tension: 0.1
+                    tension: 0.2
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
             scales: {
-                x: { grid: { display: false } },
-                y: {
-                    title: { display: true, text: 'Total Konsumsi Listrik (kWh)', font: { weight: 'bold' } },
-                    ticks: { callback: function(value) { return value.toLocaleString('id-ID') + ' kWh'; } }
-                }
+                y: { ticks: { callback: v => v.toLocaleString('id-ID') + ' kWh' } }
             }
         }
     });
 }
 </script>
+</body>
+</html>
