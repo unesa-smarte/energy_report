@@ -107,6 +107,9 @@ async function inisialisasiPrediksiAI() {
     let dataKwhHistoris = Array(18).fill(0);
 
     try {
+       // Tambahkan baris ini untuk memaksa TensorFlow menggunakan CPU dan menghilangkan error WebGL 2:
+        await tf.setBackend('cpu');
+        
         // 1. PROSES BACA DATA DARI FOLDER /data_tagihan/ 
         for (let p of masterPeriode) {
             for (let kampus of daftarKampus) {
