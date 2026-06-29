@@ -290,7 +290,7 @@ function hitungRegresiLinear(data, xTarget) {
     return xTarget.map(tx => slope * tx + intercept);
 }
 
-// RENDER GRAFIK CHART.JS
+// RENDER GRAFIK CHART.JS (Versi Toleran Angka Ekstrem / Eksponensial)
 function tampilkanGrafik(dataPrediksi) {
     const ctx = document.getElementById('chartPrediksiAI').getContext('2d');
     if (chartInstance) chartInstance.destroy();
@@ -301,6 +301,9 @@ function tampilkanGrafik(dataPrediksi) {
     const datasetPrediksi = Array(17).fill(null);
     datasetPrediksi.push(dataKwhHistorisGlobal[17]); 
     dataPrediksi.forEach(nilai => datasetPrediksi.push(Math.round(nilai)));
+
+    // Deteksi apakah ada data yang melonjak ekstrem (di atas 10 juta kWh) untuk autoswitch skala
+    const apakahAdaLonjakanEkstrem = dataPrediksi.some(nilai => nilai > 10000000);
 
     chartInstance = new Chart(ctx, {
         type: 'line',
@@ -331,9 +334,25 @@ function tampilkanGrafik(dataPrediksi) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'top' } },
+            plugins: { 
+                legend: { position: 'top' },
+                title: {
+                    display: apakahAdaLonjakanEkstrem,
+                    text: '⚠️ Peringatan: Menggunakan Skala Logaritmik karena deteksi nilai peramalan ekstrem.',
+                    color: '#dc3545',
+                    font: { weight: 'bold' }
+                }
+            },
             scales: {
-                y: { ticks: { callback: v => v.toLocaleString('id-ID') + ' kWh' } }
+                y: {
+                    // Jika ada data meledak (seperti SARIMAX Anda), gunakan skala 'logarithmic' agar grafik historis tidak flat
+                    type: apakahAdaLonjakanEkstrem ? 'logarithmic' : 'linear',
+                    ticks: { 
+                        callback: function(value) {
+                            return Number(value).toLocaleString('id-ID') + ' kWh';
+                        }
+                    }
+                }
             }
         }
     });
