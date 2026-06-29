@@ -21,7 +21,7 @@
             
             <!-- HEADER -->
             <div class="d-flex align-items-center justify-content-between mb-4 bg-dark text-white p-3 rounded-3 shadow-sm">
-                <h4 class="mb-0 fw-bold"><i class="fa-solid fa-microchip text-warning me-2"></i> Hybrid Energy Forecasting System (JSON Source)</h4>
+                <h4 class="mb-0 fw-bold"><i class="fa-solid fa-brain"></i> AI Energy Forecasting Prediction System</h4>
                 <div class="d-flex align-items-center gap-2">
                     <input type="password" id="githubToken" class="form-control form-control-sm token-input" placeholder="Masukkan GitHub Token (ghp_...)" />
                     <button class="btn btn-sm btn-outline-light" onclick="window.close()">Tutup</button>
@@ -44,7 +44,7 @@
                             </optgroup>
                             <optgroup label="🤖 Cloud LLM AI Forecasting (Butuh GitHub Token)">
                                 <option value="gpt-4o">3. OpenAI GPT-4o (Analisis Pola Kompleks)</option>
-                                <option value="DeepSeek-R1">4. DeepSeek-R1 (Penalaran Logis)</option>
+                                <option value="Ministral-3B">4. Ministral-3B (Penalaran Logis)</option>
                                 <option value="Llama-3.3">5. Llama-3.3 (Alternatif Open Source)</option>
                             </optgroup>
                         </select>
@@ -162,7 +162,7 @@ async function prosesPemilihanModel() {
 async function panggilGitHubModelsAPI(modelName, token, dataRiil) {
     let endpointModelId = "";
     if (modelName === "gpt-4o") endpointModelId = "gpt-4o";
-    else if (modelName === "DeepSeek-R1") endpointModelId = "DeepSeek-R1";
+    else if (modelName === "Ministral-3B") endpointModelId = "Ministral-3B";
     else if (modelName === "Llama-3.3") endpointModelId = "Llama-3.3-70B-Instruct";
 
     const apiUrl = "https://models.inference.ai.azure.com/chat/completions";
