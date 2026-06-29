@@ -162,7 +162,7 @@ async function prosesPemilihanModel() {
 async function panggilGitHubModelsAPI(modelName, token, dataRiil) {
     let endpointModelId = "";
     if (modelName === "gpt-4o") endpointModelId = "gpt-4o";
-    else if (modelName === "gpt-4-1") endpointModelId = "gpt-4-1";
+    else if (modelName === "gpt-4-1") endpointModelId = "gpt-4.1";
     else if (modelName === "Llama-3.3") endpointModelId = "Llama-3.3-70B-Instruct";
 
     const apiUrl = "https://models.inference.ai.azure.com/chat/completions";
