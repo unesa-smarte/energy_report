@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚡ AI Hybrid Forecasting - Multi-Model JSON</title>
+    <title>⚡ AI Energy Forecasting - Multi-Model JSON</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -21,7 +21,7 @@
             
             <!-- HEADER -->
             <div class="d-flex align-items-center justify-content-between mb-4 bg-dark text-white p-3 rounded-3 shadow-sm">
-                <h4 class="mb-0 fw-bold"><i class="fa-solid fa-brain"></i> AI Energy Forecasting Prediction System</h4>
+                <h4 class="mb-0 fw-bold"><i class="fa-solid fa-brain"></i> AI Energy Forecasting System</h4>
                 <div class="d-flex align-items-center gap-2">
                     <input type="password" id="githubToken" class="form-control form-control-sm token-input" placeholder="Masukkan GitHub Token (ghp_...)" />
                     <button class="btn btn-sm btn-outline-light" onclick="window.close()">Tutup</button>
@@ -44,7 +44,7 @@
                             </optgroup>
                             <optgroup label="🤖 Cloud LLM AI Forecasting (Butuh GitHub Token)">
                                 <option value="gpt-4o">3. OpenAI GPT-4o (Analisis Pola Kompleks)</option>
-                                <option value="Ministral-3B">4. Ministral-3B (Penalaran Logis)</option>
+                                <option value="Phi-4-mini-instruct">4. Phi-4-mini-instruct (Penalaran Logis)</option>
                                 <option value="Llama-3.3">5. Llama-3.3 (Alternatif Open Source)</option>
                             </optgroup>
                         </select>
@@ -162,7 +162,7 @@ async function prosesPemilihanModel() {
 async function panggilGitHubModelsAPI(modelName, token, dataRiil) {
     let endpointModelId = "";
     if (modelName === "gpt-4o") endpointModelId = "gpt-4o";
-    else if (modelName === "Ministral-3B") endpointModelId = "Ministral-3B";
+    else if (modelName === "Phi-4-mini-instruct") endpointModelId = "Phi-4-mini-instruct";
     else if (modelName === "Llama-3.3") endpointModelId = "Llama-3.3-70B-Instruct";
 
     const apiUrl = "https://models.inference.ai.azure.com/chat/completions";
