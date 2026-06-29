@@ -44,8 +44,8 @@
                             </optgroup>
                             <optgroup label="🤖 Cloud LLM AI Forecasting (Butuh GitHub Token)">
                                 <option value="gpt-4o">3. OpenAI GPT-4o (Analisis Pola Kompleks)</option>
-                                <option value="DeepSeek-R1">4. Google Gemini 1.5 Pro (Penalaran Logis)</option>
-                                <option value="Llama-3.3-70B-Instruct">5. Meta Llama 3.1 (Alternatif Open Source)</option>
+                                <option value="DeepSeek-R1">4. DeepSeek-R1 (Penalaran Logis)</option>
+                                <option value="Llama-3.3">5. Llama-3.3 (Alternatif Open Source)</option>
                             </optgroup>
                         </select>
                     </div>
@@ -162,8 +162,8 @@ async function prosesPemilihanModel() {
 async function panggilGitHubModelsAPI(modelName, token, dataRiil) {
     let endpointModelId = "";
     if (modelName === "gpt-4o") endpointModelId = "gpt-4o";
-    else if (modelName === "gemini-1.5-pro") endpointModelId = "Gemini-1.5-pro";
-    else if (modelName === "meta-llama-3") endpointModelId = "meta-llama-3.1-405b-instruct";
+    else if (modelName === "DeepSeek-R1") endpointModelId = "DeepSeek-R1";
+    else if (modelName === "Llama-3.3") endpointModelId = "Llama-3.3-70B-Instruct";
 
     const apiUrl = "https://models.inference.ai.azure.com/chat/completions";
     
