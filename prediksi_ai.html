@@ -70,11 +70,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
 async function inisialisasiPrediksiAI() {
     const statusEl = document.getElementById('aiStatus');
-    
-    // Daftar inisial depan file JSON kampus Anda
     const daftarKampus = ["ktt", "lidah", "mus"];
 
-    // Urutan Master Waktu (Januari 2025 - Juni 2026)
     const masterPeriode = [
         { id: 0, label: "Jan 25", fileKeyword: "Januari_25" },
         { id: 1, label: "Feb 25", fileKeyword: "Februari_25" },
@@ -96,7 +93,6 @@ async function inisialisasiPrediksiAI() {
         { id: 17, label: "Jun 26", fileKeyword: "Juni_26" }
     ];
 
-    // Target Proyeksi 1 Tahun ke Depan (Juli 2026 - Juni 2027)
     const targetPrediksi = [
         { id: 18, label: "Jul 26" }, { id: 19, label: "Agu 26" }, { id: 20, label: "Sep 26" },
         { id: 21, label: "Okt 26" }, { id: 22, label: "Nov 26" }, { id: 23, label: "Des 26" },
@@ -107,23 +103,14 @@ async function inisialisasiPrediksiAI() {
     let dataKwhHistoris = Array(18).fill(0);
 
     try {
-       // Tambahkan baris ini untuk memaksa TensorFlow menggunakan CPU dan menghilangkan error WebGL 2:
-        await tf.setBackend('cpu');
-        
-        // 1. PROSES BACA DATA DARI FOLDER /data_tagihan/ 
+        // 1. BACA DATA JSON
         for (let p of masterPeriode) {
             for (let kampus of daftarKampus) {
-                // Konstruksi nama file, contoh: "data_tagihan/ktt_Januari_25.json"
                 let namaFile = `${kampus}_${p.fileKeyword}.json`;
-                
                 const response = await fetch(`data_tagihan/${namaFile}`);
-                if (!response.ok) {
-                    continue; // Lewati jika file kampus tersebut tidak ditemukan di bulan terkait
-                }
+                if (!response.ok) continue;
                 
                 const dataJson = await response.json();
-                
-                // Menjumlahkan kolom kWh secara dinamis
                 dataJson.forEach(item => {
                     let lwbp = parseInt(item["kWh LWBP"]) || parseInt(item["LWBP"]) || 0;
                     let wbp = parseInt(item["kWh WBP"]) || parseInt(item["WBP"]) || 0;
@@ -132,50 +119,77 @@ async function inisialisasiPrediksiAI() {
             }
         }
 
-        statusEl.className = "badge bg-info status-badge text-white";
-        statusEl.innerHTML = "<i class='fa-solid fa-brain fa-fade me-1'></i> AI Sedang Belajar (Training)...";
-
-        // 2. PROSES PEMODELAN AI (TensorFlow.js)
-        const xTrainData = masterPeriode.map(p => p.id); 
-        const yTrainData = dataKwhHistoris;
-
-        const xs = tf.tensor2d(xTrainData, [xTrainData.length, 1]);
-        const ys = tf.tensor2d(yTrainData, [yTrainData.length, 1]);
-
-        // Jaringan saraf tiruan sederhana dengan 1 hidden layer (10 node) berkemampuan menangkap tren non-linear
-        const model = tf.sequential();
-        model.add(tf.layers.dense({ units: 10, activation: 'tanh', inputShape: [1] }));
-        model.add(tf.layers.dense({ units: 1 })); 
-
-        model.compile({
-            optimizer: tf.train.adam(0.04),
-            loss: 'meanSquaredError'
+        // Filter data jika ada bulan yang kosong/tidak terbaca di awal agar tidak merusak tren
+        const xValid = [];
+        const yValid = [];
+        dataKwhHistoris.forEach((val, idx) => {
+            if (val > 0) {
+                xValid.push(idx);
+                yValid.push(val);
+            }
         });
 
-        // Proses belajar model
-        await model.fit(xs, ys, {
-            epochs: 400,
-            shuffle: true
-        });
+        if (xValid.length === 0) {
+            throw new Error("Semua data file JSON terbaca 0 kWh. Periksa penamaan file atau key di dalam JSON Anda.");
+        }
 
-        // 3. PROSES PREDIKSI MASA DEPAN
-        const xPredData = targetPrediksi.map(p => p.id); 
-        const xsPred = tf.tensor2d(xPredData, [xPredData.length, 1]);
-        const ysPred = model.predict(xsPred);
-        
-        const hasilPrediksiArray = await ysPred.data();
+        // 2. PEMODELAN MATEMATIS (Regresi Polinomial Derajat 2 / Tren Kurva)
+        // Rumus ini menggantikan TensorFlow untuk menghindari masalah skala data jomplang (Vanishing Gradient)
+        const hasilPrediksiArray = hitungTrenPolinomial(xValid, yValid, targetPrediksi.map(p => p.id));
 
         statusEl.className = "badge bg-success status-badge text-white";
-        statusEl.innerHTML = "<i class='fa-solid fa-check me-1'></i> Prediksi AI Siap";
+        statusEl.innerHTML = "<i class='fa-solid fa-check me-1'></i> Model Tren Siap";
 
-        // 4. RENDER KE GRAFIK CHART.JS
+        // 3. RENDER GRAFIK
         tampilkanGrafikGabungan(masterPeriode, targetPrediksi, dataKwhHistoris, hasilPrediksiArray);
 
     } catch (error) {
         console.error(error);
-        statusEl.className = "badge bg-danger status-badge";
-        statusEl.innerHTML = "Error Memproses Data";
+        statusEl.className = "badge bg-danger status-badge text-white";
+        statusEl.innerHTML = error.message || "Error Memproses Data";
     }
+}
+
+// Algoritma Matrix Least Squares untuk mendapatkan Kurva Tren Penggunaan Listrik
+function hitungTrenPolinomial(x, y, xTarget) {
+    let n = x.length;
+    let sumX = 0, sumX2 = 0, sumX3 = 0, sumX4 = 0;
+    let sumY = 0, sumXY = 0, sumX2Y = 0;
+
+    for (let i = 0; i < n; i++) {
+        let xi = x[i];
+        let yi = y[i];
+        let xi2 = xi * xi;
+
+        sumX += xi;
+        sumX2 += xi2;
+        sumX3 += xi2 * xi;
+        sumX4 += xi2 * xi2;
+        sumY += yi;
+        sumXY += xi * yi;
+        sumX2Y += xi2 * yi;
+    }
+
+    // Penyelesaian persamaan linear matriks 3x3 (Metode Cramer Sederhana)
+    let d = n * (sumX2 * sumX4 - sumX3 * sumX3) - sumX * (sumX * sumX4 - sumX3 * sumX2) + sumX2 * (sumX * sumX3 - sumX2 * sumX2);
+    
+    if (Math.abs(d) < 0.1) {
+        // Fallback ke Linear biasa jika matriks gagal/singular
+        let m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        let c = (sumY - m * sumX) / n;
+        return xTarget.map(tx => m * tx + c);
+    }
+
+    let da = sumY * (sumX2 * sumX4 - sumX3 * sumX3) - sumX * (sumXY * sumX4 - sumX3 * sumX2Y) + sumX2 * (sumXY * sumX3 - sumX2Y * sumX2);
+    let db = n * (sumXY * sumX4 - sumX2Y * sumX3) - sumY * (sumX * sumX4 - sumX3 * sumX2) + sumX2 * (sumX * sumX2Y - sumXY * sumX2);
+    let dc = n * (sumX2 * sumX2Y - sumXY * sumX3) - sumX * (sumX * sumX2Y - sumX2 * sumXY) + sumY * (sumX * sumX3 - sumX2 * sumX2);
+
+    let a = da / d; // Koefisien x^2
+    let b = db / d; // Koefisien x
+    let c = dc / d; // Konstanta intercept
+
+    // Masukkan target bulan masa depan (18-29) ke dalam rumus kurva tren
+    return xTarget.map(tx => (a * tx * tx) + (b * tx) + c);
 }
 
 function tampilkanGrafikGabungan(masterPeriode, targetPrediksi, dataRiil, dataPrediksi) {
@@ -184,12 +198,11 @@ function tampilkanGrafikGabungan(masterPeriode, targetPrediksi, dataRiil, dataPr
     const semuaLabelSumbuX = [...masterPeriode.map(p => p.label), ...targetPrediksi.map(p => p.label)];
     const datasetRiil = [...dataRiil, ...Array(12).fill(null)];
     
-    // Sambungkan titik akhir Juni 26 ke garis awal prediksi merah agar menyatu
     const datasetPrediksi = Array(17).fill(null);
     datasetPrediksi.push(dataRiil[17]); 
     
     dataPrediksi.forEach(nilai => {
-        datasetPrediksi.push(Math.round(nilai));
+        datasetPrediksi.push(nilai < 0 ? 0 : Math.round(nilai)); // Mencegah nilai minus jika tren drop ekstrim
     });
 
     new Chart(ctx, {
@@ -198,7 +211,7 @@ function tampilkanGrafikGabungan(masterPeriode, targetPrediksi, dataRiil, dataPr
             labels: semuaLabelSumbuX,
             datasets: [
                 {
-                    label: '📊 Data Historis Riil (Gabungan Kampus)',
+                    label: '📊 Data Historis Riil',
                     data: datasetRiil,
                     borderColor: '#1e3c72',
                     backgroundColor: 'rgba(30, 60, 114, 0.1)',
@@ -208,7 +221,7 @@ function tampilkanGrafikGabungan(masterPeriode, targetPrediksi, dataRiil, dataPr
                     fill: true
                 },
                 {
-                    label: '🔮 Prediksi Tren AI (1 Tahun Kedepan)',
+                    label: '🔮 Proyeksi Tren Statistik (1 Tahun Kedepan)',
                     data: datasetPrediksi,
                     borderColor: '#dc3545',
                     backgroundColor: 'transparent',
@@ -229,19 +242,6 @@ function tampilkanGrafikGabungan(masterPeriode, targetPrediksi, dataRiil, dataPr
                 y: {
                     title: { display: true, text: 'Total Konsumsi Listrik (kWh)', font: { weight: 'bold' } },
                     ticks: { callback: function(value) { return value.toLocaleString('id-ID') + ' kWh'; } }
-                }
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.dataset.label.split(' ')[1] || '';
-                            if (context.parsed.y !== null) {
-                                label += ': ' + context.parsed.y.toLocaleString('id-ID') + ' kWh';
-                            }
-                            return label;
-                        }
-                    }
                 }
             }
         }
