@@ -34,18 +34,20 @@
                 <div class="row align-items-center mb-4 border-bottom pb-3 g-3">
                     <div class="col-md-5">
                         <h5 class="fw-bold mb-1 text-secondary">Pilih Engine Pemodelan:</h5>
-                        <small class="text-muted">* Data dinamis dari tagihan berjalan</small>
+                        <small class="text-muted">* Data dinamis dari tagihan berjalan & file prediksi</small>
                     </div>
                     <div class="col-md-5">
                         <select id="selectModel" class="form-select fw-bold border-primary" onchange="prosesPemilihanModel()">
-                            <optgroup label="📉 Model Statistik Lokal (Instan)">
+                            <optgroup label="📉 Model Statistik & ML Lokal (Instan)">
                                 <option value="holtwinters">1. Holt-Winters Seasonal (Rekomendasi Lokal)</option>
                                 <option value="linear">2. Regresi Linear (Garis Tren Lurus)</option>
+                                <option value="sarimax">3. SARIMAX (Data Terkomparasi dari prediksi.json)</option>
+                                <option value="lstm">4. LSTM Deep Learning (Data Terkomparasi dari prediksi.json)</option>
                             </optgroup>
                             <optgroup label="🤖 Cloud LLM AI Forecasting (Butuh GitHub Token)">
-                                <option value="gpt-4o">3. OpenAI GPT-4o (Analisis Pola Kompleks)</option>
-                                <option value="gpt-4-1">4. OpenAI GPT-4-1 (Penalaran Logis)</option>
-                                <option value="Llama-3.3">5. Llama-3.3 (Alternatif Open Source)</option>
+                                <option value="gpt-4o">5. OpenAI GPT-4o (Analisis Pola Kompleks)</option>
+                                <option value="gpt-4-1">6. OpenAI GPT-4-1 (Penalaran Logis)</option>
+                                <option value="Llama-3.3">7. Llama-3.3 (Alternatif Open Source)</option>
                             </optgroup>
                         </select>
                     </div>
@@ -65,7 +67,7 @@
 </div>
 
 <script>
-// Variabel Global Data Riil (Akan diisi dari file JSON)
+// Variabel Global Data Riil & File JSON Terkomparasi
 let dataKwhHistorisGlobal = Array(18).fill(0);
 let chartInstance = null;
 
@@ -91,7 +93,7 @@ document.addEventListener("DOMContentLoaded", function() {
     muatDanInisialisasiData();
 });
 
-// 📁 FUNGSI UNTUK MEMBACA FILE JSON SEPERTI SEBELUMNYA
+// 📁 FUNGSI UNTUK MEMBACA FILE JSON
 async function muatDanInisialisasiData() {
     const daftarKampus = ["ktt", "lidah", "mus"];
     try {
@@ -110,7 +112,7 @@ async function muatDanInisialisasiData() {
             }
         }
         perbaruiStatus("Status: Siap", "success");
-        prosesPemilihanModel(); // Jalankan kalkulasi model pertama kali setelah data JSON siap
+        prosesPemilihanModel(); 
     } catch (error) {
         console.error("Gagal memuat struktur file JSON:", error);
         perbaruiStatus("Error Load JSON", "danger");
@@ -135,6 +137,17 @@ async function prosesPemilihanModel() {
         perbaruiStatus("Status: Siap", "success");
         hasilPrediksi = hitungRegresiLinear(dataKwhHistorisGlobal, targetPrediksi.map(p => p.id));
         tampilkanGrafik(hasilPrediksi);
+    } else if (modelDipilih === "sarimax" || modelDipilih === "lstm") {
+        perbaruiStatus("📂 Membaca prediksi.json...", "warning");
+        hasilPrediksi = await ambilDataPrediksiJson(modelDipilih);
+        if (hasilPrediksi) {
+            perbaruiStatus("Status: Siap", "success");
+            tampilkanGrafik(hasilPrediksi);
+        } else {
+            perbaruiStatus("❌ Gagal Muat File", "danger");
+            document.getElementById("selectModel").value = "holtwinters";
+            prosesPemilihanModel();
+        }
     } else {
         const token = document.getElementById("githubToken").value.trim();
         if (!token) {
@@ -155,6 +168,43 @@ async function prosesPemilihanModel() {
             document.getElementById("selectModel").value = "holtwinters";
             prosesPemilihanModel();
         }
+    }
+}
+
+// 📂 PARSER UNTUK PARSING DATA SARIMAX ATAU LSTM DARI FILE prediksi.json
+async function ambilDataPrediksiJson(jenisModel) {
+    try {
+        const response = await fetch('prediksi.json');
+        if (!response.ok) throw new Error("File prediksi.json tidak ditemukan");
+        
+        const data = await response.json();
+        let arrayHasil = [];
+        
+        // Sesuaikan key pembacaan dengan struktur file prediksi.json Anda
+        // Jika file berformat array object (misal: [{ "Periode": "Jul 26", "SARIMAX": 45000, "LSTM": 43000 }])
+        if (Array.isArray(data)) {
+            data.forEach(item => {
+                let keyPencarian = jenisModel === "sarimax" ? "SARIMAX" : "LSTM";
+                // Toleransi jika key menggunakan huruf kecil (sarimax/lstm)
+                let nilai = item[keyPencarian] || item[jenisModel.toUpperCase()] || item[jenisModel] || 0;
+                arrayHasil.push(parseFloat(nilai));
+            });
+        } 
+        // Jika file berformat object langsung (misal: { "sarimax": [12 data], "lstm": [12 data] })
+        else if (data[jenisModel]) {
+            arrayHasil = data[jenisModel];
+        }
+
+        if (arrayHasil.length >= 12) {
+            return arrayHasil.slice(0, 12); // Ambil tepat 12 bulan ke depan
+        } else {
+            alert(`⚠️ Struktur data ${jenisModel} di prediksi.json kurang dari 12 bulan.`);
+            return null;
+        }
+    } catch (error) {
+        console.error("Gagal membaca file prediksi.json:", error);
+        alert("⚠️ Gagal memuat file prediksi.json. Pastikan file berada di folder yang sama.");
+        return null;
     }
 }
 
