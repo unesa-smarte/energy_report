@@ -41,8 +41,8 @@
                             <optgroup label="📉 Model Statistik & ML Lokal (Instan)">
                                 <option value="holtwinters">1. Holt-Winters Seasonal (Rekomendasi Lokal)</option>
                                 <option value="linear">2. Regresi Linear (Garis Tren Lurus)</option>
-                                <option value="sarimax">3. SARIMAX (Data Terkomparasi dari prediksi.json)</option>
-                                <option value="lstm">4. LSTM Deep Learning (Data Terkomparasi dari prediksi.json)</option>
+                                <option value="sarimax">3. SARIMAX (Data dari python)</option>
+                                <option value="lstm">4. LSTM Deep Learning (Data dari python)</option>
                             </optgroup>
                             <optgroup label="🤖 Cloud LLM AI Forecasting (Butuh GitHub Token)">
                                 <option value="gpt-4o">5. OpenAI GPT-4o (Analisis Pola Kompleks)</option>
@@ -156,7 +156,7 @@ async function prosesPemilihanModel() {
             return;
         }
         
-        perbaruiStatus("🤖 Menghitung via AI Cloud...", "warning");
+        perbaruiStatus("🤖 Proses via AI ", "warning");
         hasilPrediksi = await panggilGitHubModelsAPI(modelDipilih, token, dataKwhHistorisGlobal);
         
         if (hasilPrediksi && hasilPrediksi.length === 12) {
