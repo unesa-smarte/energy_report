@@ -26,7 +26,7 @@ const DAFTAR_PERIODE_TAGIHAN = {
         { value: "ktt_Juli_25", label: "Juli 2025 (Ketintang)" },
         { value: "ktt_Agustus_25", label: "Agustus 2025 (Ketintang)" }, 
         { value: "ktt_September_25", label: "September 2025 (Ketintang)" },
-        { value: "ktt_Oktober_25", label: "Juni Oktober (Ketintang)" },
+        { value: "ktt_Oktober_25", label: "Oktober (Ketintang)" },
         { value: "ktt_November_25", label: "November 2025 (Ketintang)" },
         { value: "ktt_Desember_25", label: "Desember 2025 (Ketintang)" }
     ],
@@ -34,7 +34,7 @@ const DAFTAR_PERIODE_TAGIHAN = {
         { value: "mus_Juli_25", label: "Juli 2025 (Mustopo)" },
         { value: "mus_Agustus_25", label: "Agustus 2025 (Mustopo)" }, 
         { value: "mus_September_25", label: "September 2025 (Mustopo)" },
-        { value: "mus_Oktober_25", label: "Juni Oktober (Mustopo)" },
+        { value: "mus_Oktober_25", label: "Oktober (Mustopo)" },
         { value: "mus_November_25", label: "November 2025 (Mustopo)" },
         { value: "mus_Desember_25", label: "Desember 2025 (Mustopo)" }
     ],    
