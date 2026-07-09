@@ -30,6 +30,14 @@ const DAFTAR_PERIODE_TAGIHAN = {
         { value: "ktt_November_25", label: "November 2025 (Ketintang)" },
         { value: "ktt_Desember_25", label: "Desember 2025 (Ketintang)" }
     ],
+    "Mustopo": [
+        { value: "mus_Juli_25", label: "Juli 2025 (Mustopo)" },
+        { value: "mus_Agustus_25", label: "Agustus 2025 (Mustopo)" }, 
+        { value: "mus_September_25", label: "September 2025 (Mustopo)" },
+        { value: "mus_Oktober_25", label: "Juni Oktober (Mustopo)" },
+        { value: "mus_November_25", label: "November 2025 (Mustopo)" },
+        { value: "mus_Desember_25", label: "Desember 2025 (Mustopo)" }
+    ],    
     "GABUNGAN":[
         // PENTING: Pisahkan dengan koma file-file yang mau digabung secara otomatis
         { value: "lidah_Januari_25,ktt_Januari_25", label: "🌍 Total Gabungan 2 Kampus (Januari 2025)" },
@@ -38,13 +46,13 @@ const DAFTAR_PERIODE_TAGIHAN = {
         { value: "lidah_April_25,ktt_April_25", label: "🌍 Total Gabungan 2 Kampus (April 2025)" },
         { value: "lidah_Mei_25,ktt_Mei_25", label: "🌍 Total Gabungan 2 Kampus (Mei 2025)" },
         { value: "lidah_Juni_25,ktt_Juni_25", label: "🌍 Total Gabungan 2 Kampus (Juni 2025)" },
-        { value: "lidah_Juli_25,ktt_Juli_25", label: "🌍 Total Gabungan 2 Kampus (Juli 2025)" },
-        { value: "lidah_Agustus_25,ktt_Agustus_25", label: "🌍 Total Gabungan 2 Kampus (Agustus 2025)" },
-        { value: "lidah_September_25,ktt_September_25", label: "🌍 Total Gabungan 2 Kampus (September 2025)" },
-        { value: "lidah_Oktober_25,ktt_Oktober_25", label: "🌍 Total Gabungan 2 Kampus (Oktober 2025)" },
-        { value: "lidah_November_25,ktt_November_25", label: "🌍 Total Gabungan 2 Kampus (November 2025)" },
-        { value: "lidah_Desember_25,ktt_Desember_25", label: "🌍 Total Gabungan 2 Kampus (Desember 2025)" },
-        { value: "lidah_Januari_25,lidah_Februari_25,lidah_Maret_25,lidah_April_25,lidah_Mei_25,lidah_Juni_25,lidah_Juli_25,lidah_Agustus_25,lidah_September_25,lidah_Oktober_25,lidah_November_25,lidah_Desember_25,ktt_Januari_25,ktt_Februari_25,ktt_Maret_25,ktt_April_25,ktt_Mei_25,ktt_Juni_25,ktt_Juli_25,ktt_Agustus_25,ktt_September_25,ktt_Oktober_25,ktt_November_25,ktt_Desember_25", label: "📊 Total Rekap Tahunan 2025 (Semua Data)" }
+        { value: "lidah_Juli_25,ktt_Juli_25,mus_Juli_25", label: "🌍 Total Gabungan 3 Kampus (Juli 2025)" },
+        { value: "lidah_Agustus_25,ktt_Agustus_25,mus_Agustus_25", label: "🌍 Total Gabungan 3 Kampus (Agustus 2025)" },
+        { value: "lidah_September_25,ktt_September_25,,mus_September_25", label: "🌍 Total Gabungan 3 Kampus (September 2025)" },
+        { value: "lidah_Oktober_25,ktt_Oktober_25,mus_Oktober_25", label: "🌍 Total Gabungan 3 Kampus (Oktober 2025)" },
+        { value: "lidah_November_25,ktt_November_25,mus_November_25", label: "🌍 Total Gabungan 3 Kampus (November 2025)" },
+        { value: "lidah_Desember_25,ktt_Desember_25,mus_Desember_25", label: "🌍 Total Gabungan 3 Kampus (Desember 2025)" },
+        { value: "lidah_Januari_25,lidah_Februari_25,lidah_Maret_25,lidah_April_25,lidah_Mei_25,lidah_Juni_25,lidah_Juli_25,lidah_Agustus_25,lidah_September_25,lidah_Oktober_25,lidah_November_25,lidah_Desember_25,ktt_Januari_25,ktt_Februari_25,ktt_Maret_25,ktt_April_25,ktt_Mei_25,ktt_Juni_25,ktt_Juli_25,ktt_Agustus_25,ktt_September_25,ktt_Oktober_25,ktt_November_25,ktt_Desember_25,mus_Juli_25,mus_Agustus_25,mus_September_25,mus_Oktober_25,mus_November_25,mus_Desember_25", label: "📊 Total Rekap Tahunan 2025 (Semua Data)" }
     
     ]
 };
