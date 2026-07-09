@@ -166,19 +166,5 @@
         "Tarif WBP": 0.0,
         "kVArh": 0,
         "Tarif kVArh": 0.0
-    },
-    {
-        "File Name": "Tagihan LIstrik FH Desember.pdf",
-        "ID Pelanggan": "511413597731",
-        "Nama Pelanggan": "F. HUKUM GEDUNG F2 UNESA",
-        "Gol": "S1",
-        "Tarif": "197000VA",
-        "Total Tagihan": 15340500,
-        "kWh LWBP": 17045,
-        "Tarif LWBP": 900.0,
-        "kWh WBP": 0,
-        "Tarif WBP": 0.0,
-        "kVArh": 0,
-        "Tarif kVArh": 0.0
     }
 ]
