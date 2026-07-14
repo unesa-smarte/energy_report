@@ -48,7 +48,7 @@ const DAFTAR_PERIODE_TAGIHAN = {
         { value: "lidah_Juni_25,ktt_Juni_25", label: "🌍 Total Gabungan 2 Kampus (Juni 2025)" },
         { value: "lidah_Juli_25,ktt_Juli_25,mus_Juli_25", label: "🌍 Total Gabungan 3 Kampus (Juli 2025)" },
         { value: "lidah_Agustus_25,ktt_Agustus_25,mus_Agustus_25", label: "🌍 Total Gabungan 3 Kampus (Agustus 2025)" },
-        { value: "lidah_September_25,ktt_September_25,,mus_September_25", label: "🌍 Total Gabungan 3 Kampus (September 2025)" },
+        { value: "lidah_September_25,ktt_September_25,mus_September_25", label: "🌍 Total Gabungan 3 Kampus (September 2025)" },
         { value: "lidah_Oktober_25,ktt_Oktober_25,mus_Oktober_25", label: "🌍 Total Gabungan 3 Kampus (Oktober 2025)" },
         { value: "lidah_November_25,ktt_November_25,mus_November_25", label: "🌍 Total Gabungan 3 Kampus (November 2025)" },
         { value: "lidah_Desember_25,ktt_Desember_25,mus_Desember_25", label: "🌍 Total Gabungan 3 Kampus (Desember 2025)" },
