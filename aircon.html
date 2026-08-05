@@ -10,7 +10,7 @@
         .card-custom { background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; }
         .text-heading { color: #0d6efd; }
         .metric-value { font-size: 1.8rem; font-weight: 600; color: #212529; }
-        .table-custom { background-color: #ffffff; border-color: #dee2e6; font-size: 0.9rem; }
+        .table-custom { background-color: #ffffff; border-color: #dee2e6; font-size: 0.88rem; }
         .table-custom th { background-color: #e9ecef; color: #212529; font-weight: 600; text-align: center; }
         .table-custom td { text-align: center; vertical-align: middle; }
         .badge-normal { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
@@ -66,19 +66,20 @@
             <table class="table table-bordered table-custom align-middle mb-0">
                 <thead>
                     <tr>
-                        <th style="width: 15%;" class="text-start">Lokasi / File</th>
-                        <th style="width: 10%;">Fasa</th>
-                        <th style="width: 12%;">Tegangan ke Netral (V)</th>
-                        <th style="width: 12%;">Arus Fasa (A)</th>
-                        <th style="width: 12%;">Daya Aktif P (kW)</th>
-                        <th style="width: 12%;">Power Factor (PF)</th>
-                        <th style="width: 12%;">THD Arus (%)</th>
-                        <th style="width: 15%;">Total & Status (PSum)</th>
+                        <th style="width: 14%;" class="text-start">Lokasi / File</th>
+                        <th style="width: 8%;">Fasa</th>
+                        <th style="width: 11%;">Tegangan (V)</th>
+                        <th style="width: 11%;">THD Tegangan (%)</th>
+                        <th style="width: 11%;">Arus Fasa (A)</th>
+                        <th style="width: 11%;">THD Arus (%)</th>
+                        <th style="width: 11%;">Daya Aktif P (kW)</th>
+                        <th style="width: 10%;">Power Factor</th>
+                        <th style="width: 13%;">Total & Status (PSum)</th>
                     </tr>
                 </thead>
                 <tbody id="summaryTableBody">
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">Membaca file dari folder /data_aircon/...</td>
+                        <td colspan="9" class="text-center text-muted py-4">Membaca file dari folder /data_aircon/...</td>
                     </tr>
                 </tbody>
             </table>
@@ -89,8 +90,9 @@
     <div class="alert alert-secondary mt-3 p-3 text-dark fs-7" role="alert">
         <h6 class="fw-bold text-dark mb-2">📌 Catatan & Indikator Kualitas Daya:</h6>
         <ul class="mb-0 ps-3">
-            <li><strong>Beban Tidak Seimbang (Unbalanced > 15%):</strong> Terjadi jika selisih arus antar fasa R, S, dan T terlalu jauh. Efeknya memicu timbulnya arus di kawat netral (I_N pada data pengukuran), penurunan efisiensi kompresor AC 3-phase, dan panas berlebih pada panel. Ditandai dengan badge merah <span class="badge bg-danger text-white">Beban Tidak Seimbang</span>.</li>
-            <li><strong>THD Arus (> 10%):</strong> Menandakan adanya gangguan harmonisa akibat penggunaan beban elektronik/inverter non-linear pada sistem AC. Ditandai dengan badge kuning <span class="badge badge-warning">THD > 10%</span>.</li>
+            <li><strong>THD Tegangan (> 5% Standard IEEE 519):</strong> Batas maksimum distorsi harmonisa tegangan yang diizinkan untuk sistem kelistrikan tegangan rendah (LV). Jika melebihi 5%, berisiko menyebabkan distorsi gelombang sinyal dan pemanasan komponen panel. Ditandai badge kuning <span class="badge badge-warning">V-THD > 5%</span>.</li>
+            <li><strong>THD Arus (> 10%):</strong> Menandakan adanya gangguan harmonisa arus akibat penggunaan beban non-linear (inverter/VFD kompresor AC). Ditandai badge kuning <span class="badge badge-warning">I-THD > 10%</span>.</li>
+            <li><strong>Beban Tidak Seimbang (Unbalanced > 15% NEMA Standard):</strong> Terjadi jika selisih arus antar fasa R, S, dan T terlalu jauh. Efeknya memicu timbulnya arus di kawat netral ($I_N$), penurunan efisiensi motor kompresor 3-phase, dan panas berlebih pada kabel. Ditandai badge merah <span class="badge bg-danger text-white">Beban Tidak Seimbang</span>.</li>
         </ul>
     </div>
     
@@ -103,14 +105,14 @@
 </div>
 
 <script>
-    // Fungsi parsing angka aman dari koma desimal Excel (contoh: "0,960" -> 0.96)
+    // Helper parsing angka dari koma desimal Excel (misal "1,18" -> 1.18)
     function parseValue(val) {
         if (val === undefined || val === null || val === '') return 0;
         let str = String(val).replace(',', '.').trim();
         let parts = str.split('.');
-        if (parts.length > 2) str = parts[0] + '.' + parts[1]; // Potong jika ada titik berlebih
+        if (parts.length > 2) str = parts[0] + '.' + parts[1];
         let num = parseFloat(str);
-        return isNaN(num) ? 0 : Math.abs(num); // Absolutkan jika negatif
+        return isNaN(num) ? 0 : Math.abs(num);
     }
 
     const csvFiles = [
@@ -142,11 +144,9 @@
                 const csvText = await response.text();
                 const lines = csvText.split(/\r?\n/);
                 
-                // Cari baris header yang memuat nama kolom fasa
                 let subHeaderIndex = lines.findIndex(line => line.includes('UA') && line.includes('UB'));
                 if (subHeaderIndex === -1) subHeaderIndex = 11;
 
-                // Tentukan delimiter (titik koma atau koma)
                 const delimiter = lines[subHeaderIndex].includes(';') ? ';' : ',';
                 const headers = lines[subHeaderIndex].split(delimiter);
                 const dataLines = lines.slice(subHeaderIndex + 1).join('\n');
@@ -158,13 +158,25 @@
                         const rows = results.data;
                         if (!rows || rows.length === 0) return;
 
-                        // Cari indeks kolom berdasarkan nama header
+                        // Peta Indeks Kolom Mi550
                         const idxUA = headers.indexOf('UA');
                         const idxUB = headers.indexOf('UB');
                         const idxUC = headers.indexOf('UC');
+                        
+                        // THD Tegangan
+                        const idxTHDUA = headers.indexOf('UA-THD') !== -1 ? headers.indexOf('UA-THD') : headers.indexOf('THDUA');
+                        const idxTHDUB = headers.indexOf('UB-THD') !== -1 ? headers.indexOf('UB-THD') : headers.indexOf('THDUB');
+                        const idxTHDUC = headers.indexOf('UC-THD') !== -1 ? headers.indexOf('UC-THD') : headers.indexOf('THDUC');
+
                         const idxIA = headers.indexOf('IA');
                         const idxIB = headers.indexOf('IB');
                         const idxIC = headers.indexOf('IC');
+
+                        // THD Arus
+                        const idxTHDIA = headers.indexOf('IA-THD') !== -1 ? headers.indexOf('IA-THD') : headers.indexOf('THDIA');
+                        const idxTHDIB = headers.indexOf('IB-THD') !== -1 ? headers.indexOf('IB-THD') : headers.indexOf('THDIB');
+                        const idxTHDIC = headers.indexOf('IC-THD') !== -1 ? headers.indexOf('IC-THD') : headers.indexOf('THDIC');
+
                         const idxPA = headers.indexOf('PA');
                         const idxPB = headers.indexOf('PB');
                         const idxPC = headers.indexOf('PC');
@@ -172,15 +184,13 @@
                         const idxPFA = headers.indexOf('PFA');
                         const idxPFB = headers.indexOf('PFB');
                         const idxPFC = headers.indexOf('PFC');
-                        const idxTHDIA = headers.indexOf('IA-THD') !== -1 ? headers.indexOf('IA-THD') : headers.indexOf('THDIA');
-                        const idxTHDIB = headers.indexOf('IB-THD') !== -1 ? headers.indexOf('IB-THD') : headers.indexOf('THDIB');
-                        const idxTHDIC = headers.indexOf('IC-THD') !== -1 ? headers.indexOf('IC-THD') : headers.indexOf('THDIC');
 
                         let ur=0, us=0, ut=0;
+                        let vthdr=0, vthds=0, vthdt=0;
                         let ir=0, is_=0, it=0;
+                        let ithdr=0, ithds=0, ithdt=0;
                         let pr=0, ps=0, pt=0, psum=0;
                         let pfr=0, pfs=0, pft=0;
-                        let thdr=0, thds=0, thdt=0;
                         let count = 0;
 
                         rows.forEach(row => {
@@ -190,9 +200,17 @@
                             us += parseValue(row[idxUB]);
                             ut += parseValue(row[idxUC]);
 
+                            vthdr += parseValue(row[idxTHDUA]);
+                            vthds += parseValue(row[idxTHDUB]);
+                            vthdt += parseValue(row[idxTHDUC]);
+
                             ir += parseValue(row[idxIA]);
                             is_ += parseValue(row[idxIB]);
                             it += parseValue(row[idxIC]);
+
+                            ithdr += parseValue(row[idxTHDIA]);
+                            ithds += parseValue(row[idxTHDIB]);
+                            ithdt += parseValue(row[idxTHDIC]);
 
                             pr += parseValue(row[idxPA]);
                             ps += parseValue(row[idxPB]);
@@ -203,23 +221,27 @@
                             pfs += parseValue(row[idxPFB]);
                             pft += parseValue(row[idxPFC]);
 
-                            thdr += parseValue(row[idxTHDIA]);
-                            thds += parseValue(row[idxTHDIB]);
-                            thdt += parseValue(row[idxTHDIC]);
-
                             count++;
                         });
 
                         if (count === 0) return;
 
-                        // Perhitungan Rata-Rata
+                        // Rata-rata Parameter
                         const vR = (ur / count).toFixed(1);
                         const vS = (us / count).toFixed(1);
                         const vT = (ut / count).toFixed(1);
 
+                        const vThdR = (vthdr / count).toFixed(2);
+                        const vThdS = (vthds / count).toFixed(2);
+                        const vThdT = (vthdt / count).toFixed(2);
+
                         const iR = (ir / count).toFixed(1);
                         const iS = (is_ / count).toFixed(1);
                         const iT = (it / count).toFixed(1);
+
+                        const iThdR = (ithdr / count).toFixed(1);
+                        const iThdS = (ithds / count).toFixed(1);
+                        const iThdT = (ithdt / count).toFixed(1);
 
                         const pR = (pr / count).toFixed(2);
                         const pS = (ps / count).toFixed(2);
@@ -230,17 +252,12 @@
                         const pfS = (pfs / count).toFixed(3);
                         const pfT = (pft / count).toFixed(3);
 
-                        // Perbaikan Rumus: PF Total Rerata = (PF_R + PF_S + PF_T) / 3
                         const pfTotalCalculated = ((parseFloat(pfR) + parseFloat(pfS) + parseFloat(pfT)) / 3).toFixed(3);
-
-                        const thdR = (thdr / count).toFixed(1);
-                        const thdS = (thds / count).toFixed(1);
-                        const thdT = (thdt / count).toFixed(1);
 
                         const avgLocationV = ((parseFloat(vR) + parseFloat(vS) + parseFloat(vT)) / 3).toFixed(1);
                         const avgLocationI = ((parseFloat(iR) + parseFloat(iS) + parseFloat(iT)) / 3).toFixed(1);
 
-                        // Kalkulasi Unbalance Arus (%)
+                        // Unbalance Arus (%)
                         const numIR = parseFloat(iR);
                         const numIS = parseFloat(iS);
                         const numIT = parseFloat(iT);
@@ -258,8 +275,11 @@
 
                         // Penentuan Badge Status
                         let statusBadges = '';
-                        if (parseFloat(thdR) > 10 || parseFloat(thdS) > 10 || parseFloat(thdT) > 10) {
-                            statusBadges += '<span class="badge badge-warning me-1">THD > 10%</span>';
+                        if (parseFloat(vThdR) > 5 || parseFloat(vThdS) > 5 || parseFloat(vThdT) > 5) {
+                            statusBadges += '<span class="badge badge-warning me-1">V-THD > 5%</span>';
+                        }
+                        if (parseFloat(iThdR) > 10 || parseFloat(iThdS) > 10 || parseFloat(iThdT) > 10) {
+                            statusBadges += '<span class="badge badge-warning me-1">I-THD > 10%</span>';
                         }
                         if (parseFloat(iUnbalance) > 15) {
                             statusBadges += '<span class="badge bg-danger text-white">Beban Tidak Seimbang</span>';
@@ -277,10 +297,11 @@
                                 </td>
                                 <td class="fw-bold text-danger bg-light">Fasa R</td>
                                 <td>${vR} V</td>
+                                <td>${vThdR}%</td>
                                 <td>${iR} A</td>
+                                <td>${iThdR}%</td>
                                 <td>${pR} kW</td>
                                 <td>${pfR}</td>
-                                <td>${thdR}%</td>
                                 <td rowspan="3" class="align-middle bg-light">
                                     <div class="fw-bold text-dark fs-5">${pSumAvg} kW</div>
                                     <small class="text-muted d-block mb-1">PF Total: ${pfTotalCalculated}</small>
@@ -291,23 +312,25 @@
                             <tr>
                                 <td class="fw-bold text-warning bg-light">Fasa S</td>
                                 <td>${vS} V</td>
+                                <td>${vThdS}%</td>
                                 <td>${iS} A</td>
+                                <td>${vThdS}%</td>
                                 <td>${pS} kW</td>
                                 <td>${pfS}</td>
-                                <td>${thdS}%</td>
                             </tr>
                             <tr>
                                 <td class="fw-bold text-primary bg-light">Fasa T</td>
                                 <td>${vT} V</td>
+                                <td>${vThdT}%</td>
                                 <td>${iT} A</td>
+                                <td>${iThdT}%</td>
                                 <td>${pT} kW</td>
                                 <td>${pfT}</td>
-                                <td>${thdT}%</td>
                             </tr>
                         `;
                         tableBody.innerHTML += rowsHTML;
 
-                        // Akumulasi Card Ringkasan Atas
+                        // Akumulasi Card Top Summary
                         grandP += parseFloat(pSumAvg);
                         sumV += parseFloat(avgLocationV);
                         sumI += parseFloat(avgLocationI);
