@@ -84,7 +84,14 @@
             </table>
         </div>
     </div>
-
+<!-- Catatan Penjelasan Kualitas Daya -->
+    <div class="alert alert-secondary mt-3 p-3 text-dark fs-7" role="alert">
+        <h6 class="fw-bold text-dark mb-2">📌 Catatan & Indikator Kualitas Daya:</h6>
+        <ul class="mb-0 ps-3">
+            <li><strong>Beban Tidak Seimbang (Unbalanced > 15%):</strong> Terjadi jika selisih arus antar fasa R, S, dan T terlalu jauh. Efeknya memicu timbulnya arus di kawat netral ($I_N$), penurunan efisiensi kompresor AC 3-phase, dan panas berlebih pada panel. Ditandai dengan badge merah <span class="badge bg-danger text-white">Beban Tidak Seimbang</span>.</li>
+            <li><strong>THD Arus (> 10%):</strong> Menandakan adanya gangguan harmonisa akibat penggunaan beban elektronik/inverter non-linear pada sistem AC. Ditandai dengan badge kuning <span class="badge badge-warning">THD > 10%</span>.</li>
+        </ul>
+    </div>
     <div class="text-center my-4 pt-3 border-top">
         <a href="https://drive.google.com/drive/folders/1opEJNSbBHHATIjS2sW2aUbXwG8cBc7rm" target="_blank" class="btn btn-outline-primary btn-sm px-4 rounded-pill">
             Masuk ke gdrive foto hasil pengukuran
@@ -192,55 +199,86 @@
                         });
 
                         // Hitung rata-rata per fasa
-                        const vR = (ur/count).toFixed(1), vS = (us/count).toFixed(1), vT = (ut/count).toFixed(1);
-                        const iR = (ir/count).toFixed(1), iS = (is_/count).toFixed(1), iT = (it/count).toFixed(1);
-                        const pR = (pr/count).toFixed(2), pS = (ps/count).toFixed(2), pT = (pt/count).toFixed(2);
-                        const pSumAvg = (psum/count).toFixed(2);
-                        const pfR = (pfr/count).toFixed(3), pfS = (pfs/count).toFixed(3), pfT = (pft/count).toFixed(3);
-                        const pfTotalAvg = (pftotal/count).toFixed(3);
-                        const thdR = (thdr/count).toFixed(1), thdS = (thds/count).toFixed(1), thdT = (thdt/count).toFixed(1);
+const vR = (ur/count).toFixed(1), vS = (us/count).toFixed(1), vT = (ut/count).toFixed(1);
+const iR = (ir/count).toFixed(1), iS = (is_/count).toFixed(1), iT = (it/count).toFixed(1);
+const pR = (pr/count).toFixed(2), pS = (ps/count).toFixed(2), pT = (pt/count).toFixed(2);
+const pSumAvg = (psum/count).toFixed(2);
+const pfR = (pfr/count).toFixed(3), pfS = (pfs/count).toFixed(3), pfT = (pft/count).toFixed(3);
+const pfTotalAvg = (pftotal/count).toFixed(3);
+const thdR = (thdr/count).toFixed(1), thdS = (thds/count).toFixed(1), thdT = (thdt/count).toFixed(1);
 
-                        const avgLocationV = ((parseFloat(vR)+parseFloat(vS)+parseFloat(vT))/3).toFixed(1);
-                        const avgLocationI = ((parseFloat(iR)+parseFloat(iS)+parseFloat(iT))/3).toFixed(1);
+const avgLocationV = ((parseFloat(vR)+parseFloat(vS)+parseFloat(vT))/3).toFixed(1);
+const avgLocationI = ((parseFloat(iR)+parseFloat(iS)+parseFloat(iT))/3).toFixed(1);
 
-                        // Render Baris Vertikal Fasa R-S-T (Rowspan 3 per File)
-                        const rowsHTML = `
-                            <tr>
-                                <td rowspan="3" class="text-start fw-bold align-middle bg-light">
-                                    <div class="text-primary">${fileName}</div>
-                                    <small class="text-muted font-monospace">Avg: ${avgLocationV}V | ${avgLocationI}A</small>
-                                </td>
-                                <td class="fw-bold text-danger bg-light">Fasa R</td>
-                                <td>${vR} V</td>
-                                <td>${iR} A</td>
-                                <td>${pR} kW</td>
-                                <td>${pfR}</td>
-                                <td>${thdR}%</td>
-                                <td rowspan="3" class="align-middle bg-light">
-                                    <div class="fw-bold text-dark fs-5">${pSumAvg} kW</div>
-                                    <small class="text-muted d-block mb-1">PF Total: ${pfTotalAvg}</small>
-                                    ${(thdR > 10 || thdS > 10 || thdT > 10) ? '<span class="badge badge-warning">THD > 10%</span>' : '<span class="badge badge-normal">Normal</span>'}
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold text-warning bg-light">Fasa S</td>
-                                <td>${vS} V</td>
-                                <td>${iS} A</td>
-                                <td>${pS} kW</td>
-                                <td>${pfS}</td>
-                                <td>${thdS}%</td>
-                            </tr>
-                            <tr>
-                                <td class="fw-bold text-primary bg-light">Fasa T</td>
-                                <td>${vT} V</td>
-                                <td>${iT} A</td>
-                                <td>${pT} kW</td>
-                                <td>${pfT}</td>
-                                <td>${thdT}%</td>
-                            </tr>
-                        `;
-                        tableBody.innerHTML += rowsHTML;
+// --- KALKULASI KETIDAKSEIMBANGAN ARUS (UNBALANCED LOAD) ---
+const numIR = parseFloat(iR);
+const numIS = parseFloat(iS);
+const numIT = parseFloat(iT);
+const numIAvg = parseFloat(avgLocationI);
 
+let iUnbalance = 0;
+if (numIAvg > 0) {
+    const maxDevI = Math.max(
+        Math.abs(numIR - numIAvg),
+        Math.abs(numIS - numIAvg),
+        Math.abs(numIT - numIAvg)
+    );
+    iUnbalance = ((maxDevI / numIAvg) * 100).toFixed(1);
+}
+
+// Menentukan Badge Status
+let statusBadges = '';
+
+// Status Harmonisa THD
+if (thdR > 10 || thdS > 10 || thdT > 10) {
+    statusBadges += '<span class="badge badge-warning me-1">THD > 10%</span>';
+}
+
+// Status Ketidakseimbangan Beban (> 15% NEMA Standard)
+if (iUnbalance > 15) {
+    statusBadges += '<span class="badge bg-danger text-white">Beban Tidak Seimbang</span>';
+} else if (statusBadges === '') {
+    statusBadges = '<span class="badge badge-normal">Normal</span>';
+}
+
+// Render Baris Vertikal Fasa R-S-T
+const rowsHTML = `
+    <tr>
+        <td rowspan="3" class="text-start fw-bold align-middle bg-light">
+            <div class="text-primary">${fileName}</div>
+            <small class="text-muted font-monospace">Avg: ${avgLocationV}V | ${avgLocationI}A</small>
+        </td>
+        <td class="fw-bold text-danger bg-light">Fasa R (N)</td>
+        <td>${vR} V</td>
+        <td>${iR} A</td>
+        <td>${pR} kW</td>
+        <td>${pfR}</td>
+        <td>${thdR}%</td>
+        <td rowspan="3" class="align-middle bg-light">
+            <div class="fw-bold text-dark fs-5">${pSumAvg} kW</div>
+            <small class="text-muted d-block mb-1">PF Total: ${pfTotalAvg}</small>
+            <small class="text-secondary d-block mb-2 font-monospace">Unbalance: ${iUnbalance}%</small>
+            <div>${statusBadges}</div>
+        </td>
+    </tr>
+    <tr>
+        <td class="fw-bold text-warning bg-light">Fasa S (N)</td>
+        <td>${vS} V</td>
+        <td>${iS} A</td>
+        <td>${pS} kW</td>
+        <td>${pfS}</td>
+        <td>${thdS}%</td>
+    </tr>
+    <tr>
+        <td class="fw-bold text-primary bg-light">Fasa T (N)</td>
+        <td>${vT} V</td>
+        <td>${iT} A</td>
+        <td>${pT} kW</td>
+        <td>${pfT}</td>
+        <td>${thdT}%</td>
+    </tr>
+`;
+tableBody.innerHTML += rowsHTML;
                         // Akumulasi Card Atas
                         grandP += parseFloat(pSumAvg);
                         sumV += parseFloat(avgLocationV);
