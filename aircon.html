@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Pengukuran Daya AC</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --text-color: #c9d1d9;
+            --text-heading: #58a6ff;
+            --table-header: #21262d;
+            --table-row-hover: #1c2128;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px 40px;
+            line-height: 1.6;
+        }
+
+        header {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        h1 { color: var(--text-heading); font-size: 24px; margin-bottom: 5px; }
+        .subtitle { color: #8b949e; font-size: 14px; }
+
+        /* Card Summary */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 16px;
+        }
+
+        .stat-card .label { font-size: 12px; color: #8b949e; text-transform: uppercase; }
+        .stat-card .value { font-size: 24px; font-weight: 600; color: #f0f6fc; margin-top: 6px; }
+
+        /* Table */
+        .table-container {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        th { background-color: var(--table-header); color: #f0f6fc; padding: 12px 16px; border-bottom: 1px solid var(--border-color); }
+        td { padding: 12px 16px; border-bottom: 1px solid var(--border-color); }
+        tr:hover { background-color: var(--table-row-hover); }
+
+        .badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            background-color: rgba(46, 160, 67, 0.15);
+            color: #3fb950;
+            border: 1px solid rgba(46, 160, 67, 0.4);
+        }
+    </style>
+    <!-- Library untuk Parsing CSV di JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+
+    <header>
+        <h1>Laporan Rata-Rata Pengukuran Daya AC</h1>
+        <div class="subtitle">Data dihitung otomatis dari file CSV di folder <code>/data_aircon/</code></div>
+    </header>
+
+    <!-- Stat Cards Overview -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="label">Rerata Tegangan</div>
+            <div class="value"><span id="avg-voltage">-</span> V</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Rerata Arus</div>
+            <div class="value"><span id="avg-current">-</span> A</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Rerata Daya Aktif (|P|)</div>
+            <div class="value"><span id="avg-power">-</span> kW</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Rerata Power Factor</div>
+            <div class="value" id="avg-pf">-</div>
+        </div>
+    </div>
+
+    <!-- Tabel Rata-Rata -->
+    <div class="table-container">
+        <table id="summary-table">
+            <thead>
+                <tr>
+                    <th>Nama File</th>
+                    <th>Tegangan Rerata (V)</th>
+                    <th>Arus Rerata (A)</th>
+                    <th>Daya Aktif Rerata (kW)</th>
+                    <th>Daya Reaktif Rerata (kVAR)</th>
+                    <th>Power Factor Rerata</th>
+                    <th>Status P</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="7" style="text-align:center; color:#8b949e;">Membaca data dari folder /data_aircon...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // DAFTAR FILE CSV
+        // Tambahkan nama file baru di sini setiap kali ada CSV baru diletakkan di folder /data_aircon/
+        const csvFiles = [
+            'Datatest6.csv'
+        ];
+
+        const tableBody = document.querySelector("#summary-table tbody");
+
+        async function processAllCSV() {
+            tableBody.innerHTML = ""; 
+            let totalV = 0, totalI = 0, totalP = 0, totalPF = 0, validFileCount = 0;
+
+            for (const fileName of csvFiles) {
+                const filePath = `./data_aircon/${fileName}`;
+                try {
+                    const response = await fetch(filePath);
+                    if (!response.ok) continue;
+
+                    const csvText = await response.text();
+
+                    Papa.parse(csvText, {
+                        header: true,
+                        dynamicTyping: true,
+                        skipEmptyLines: true,
+                        complete: function(results) {
+                            const rows = results.data;
+                            if (rows.length === 0) return;
+
+                            let sumV = 0, sumI = 0, sumP = 0, sumQ = 0, sumPF = 0, count = 0;
+
+                            rows.forEach(row => {
+                                // Mengambil data berdasarkan header CSV (fleksibel nama kolom)
+                                let v = row.voltage_v || row.V || row.voltage || 0;
+                                let i = row.current_a || row.I || row.current || 0;
+                                let p = row.active_power_kw || row.P || row.active_power || 0;
+                                let q = row.reactive_power_kvar || row.Q || row.reactive_power || 0;
+                                let pf = row.power_factor || row.PF || 0;
+
+                                sumV += v;
+                                sumI += i;
+                                sumP += Math.abs(p); // ABsOLUTKAN ACTIVE POWER DI SINI
+                                sumQ += Math.abs(q);
+                                sumPF += Math.abs(pf);
+                                count++;
+                            });
+
+                            const avgV = (sumV / count).toFixed(2);
+                            const avgI = (sumI / count).toFixed(2);
+                            const avgP = (sumP / count).toFixed(2);
+                            const avgQ = (sumQ / count).toFixed(2);
+                            const avgPF = (sumPF / count).toFixed(3);
+
+                            // Masukkan ke baris tabel
+                            const tr = document.createElement("tr");
+                            tr.innerHTML = `
+                                <td><strong>${fileName}</strong></td>
+                                <td>${avgV} V</td>
+                                <td>${avgI} A</td>
+                                <td>${avgP} kW</td>
+                                <td>${avgQ} kVAR</td>
+                                <td>${avgPF}</td>
+                                <td><span class="badge">Fixed (|P|)</span></td>
+                            `;
+                            tableBody.appendChild(tr);
+
+                            // Akumulasi untuk Stat Cards di atas
+                            totalV += parseFloat(avgV);
+                            totalI += parseFloat(avgI);
+                            totalP += parseFloat(avgP);
+                            totalPF += parseFloat(avgPF);
+                            validFileCount++;
+
+                            // Update Stat Cards Overall
+                            document.getElementById("avg-voltage").innerText = (totalV / validFileCount).toFixed(2);
+                            document.getElementById("avg-current").innerText = (totalI / validFileCount).toFixed(2);
+                            document.getElementById("avg-power").innerText = (totalP / validFileCount).toFixed(2);
+                            document.getElementById("avg-pf").innerText = (totalPF / validFileCount).toFixed(3);
+                        }
+                    });
+                } catch (err) {
+                    console.error("Gagal membaca file:", fileName, err);
+                }
+            }
+        }
+
+        window.onload = processAllCSV;
+    </script>
+</body>
+</html>
