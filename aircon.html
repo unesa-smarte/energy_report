@@ -24,7 +24,7 @@
 <div class="container-fluid px-4">
     <header class="pb-3 mb-4 border-bottom">
         <h3 class="fw-bold text-heading">Dashboard Analisis Kelistrikan 3-Phase Sistem Pendingin Ruangan</h3>
-        <p class="text-muted mb-0">Laporan Rata-Rata Pengukuran AC per Lokasi </p>
+        <p class="text-muted mb-0">Laporan Rata-Rata Pengukuran AC di Panel Gedung Rektorat Unesa </p>
     </header>
 
     <!-- Ringkasan Atas (Overall Summary Cards) -->
@@ -84,6 +84,13 @@
             </table>
         </div>
     </div>
+
+    <div class="text-center my-4 pt-3 border-top">
+        <a href="https://drive.google.com/drive/folders/1opEJNSbBHHATIjS2sW2aUbXwG8cBc7rm" target="_blank" class="btn btn-outline-primary btn-sm px-4 rounded-pill">
+            Masuk ke gdrive foto hasil pengukuran
+        </a>
+    </div>
+
 </div>
 
 <script>
@@ -203,7 +210,7 @@
                                     <div class="text-primary">${fileName}</div>
                                     <small class="text-muted font-monospace">Avg: ${avgLocationV}V | ${avgLocationI}A</small>
                                 </td>
-                                <td class="fw-bold text-danger bg-light">Fasa R (N)</td>
+                                <td class="fw-bold text-danger bg-light">Fasa R</td>
                                 <td>${vR} V</td>
                                 <td>${iR} A</td>
                                 <td>${pR} kW</td>
@@ -216,7 +223,7 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td class="fw-bold text-warning bg-light">Fasa S (N)</td>
+                                <td class="fw-bold text-warning bg-light">Fasa S</td>
                                 <td>${vS} V</td>
                                 <td>${iS} A</td>
                                 <td>${pS} kW</td>
@@ -224,7 +231,7 @@
                                 <td>${thdS}%</td>
                             </tr>
                             <tr>
-                                <td class="fw-bold text-primary bg-light">Fasa T (N)</td>
+                                <td class="fw-bold text-primary bg-light">Fasa T</td>
                                 <td>${vT} V</td>
                                 <td>${iT} A</td>
                                 <td>${pT} kW</td>
