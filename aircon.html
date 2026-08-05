@@ -131,93 +131,125 @@
         </table>
     </div>
 
-    <script>
-        // DAFTAR FILE CSV
-        // Tambahkan nama file baru di sini setiap kali ada CSV baru diletakkan di folder /data_aircon/
-        const csvFiles = [
-            'Datatest6.csv'
-        ];
+<script>
+    const files = [
+        'Datatest6.csv'
+    ];
 
-        const tableBody = document.querySelector("#summary-table tbody");
+    const tableBody = document.querySelector("#summary-table tbody");
 
-        async function processAllCSV() {
-            tableBody.innerHTML = ""; 
-            let totalV = 0, totalI = 0, totalP = 0, totalPF = 0, validFileCount = 0;
+    // Fungsi helper untuk membersihkan angka (mengubah koma ke titik jika ada)
+    function parseNumber(val) {
+        if (typeof val === 'number') return isNaN(val) ? 0 : val;
+        if (typeof val === 'string') {
+            let cleanVal = val.replace(',', '.').trim();
+            let num = parseFloat(cleanVal);
+            return isNaN(num) ? 0 : num;
+        }
+        return 0;
+    }
 
-            for (const fileName of csvFiles) {
-                const filePath = `./data_aircon/${fileName}`;
-                try {
-                    const response = await fetch(filePath);
-                    if (!response.ok) continue;
+    async function loadAndProcessCSV() {
+        tableBody.innerHTML = "";
+        let totalV = 0, totalI = 0, totalP = 0, totalPF = 0, validFileCount = 0;
 
-                    const csvText = await response.text();
-
-                    Papa.parse(csvText, {
-                        header: true,
-                        dynamicTyping: true,
-                        skipEmptyLines: true,
-                        complete: function(results) {
-                            const rows = results.data;
-                            if (rows.length === 0) return;
-
-                            let sumV = 0, sumI = 0, sumP = 0, sumQ = 0, sumPF = 0, count = 0;
-
-                            rows.forEach(row => {
-                                // Mengambil data berdasarkan header CSV (fleksibel nama kolom)
-                                let v = row.voltage_v || row.V || row.voltage || 0;
-                                let i = row.current_a || row.I || row.current || 0;
-                                let p = row.active_power_kw || row.P || row.active_power || 0;
-                                let q = row.reactive_power_kvar || row.Q || row.reactive_power || 0;
-                                let pf = row.power_factor || row.PF || 0;
-
-                                sumV += v;
-                                sumI += i;
-                                sumP += Math.abs(p); // ABsOLUTKAN ACTIVE POWER DI SINI
-                                sumQ += Math.abs(q);
-                                sumPF += Math.abs(pf);
-                                count++;
-                            });
-
-                            const avgV = (sumV / count).toFixed(2);
-                            const avgI = (sumI / count).toFixed(2);
-                            const avgP = (sumP / count).toFixed(2);
-                            const avgQ = (sumQ / count).toFixed(2);
-                            const avgPF = (sumPF / count).toFixed(3);
-
-                            // Masukkan ke baris tabel
-                            const tr = document.createElement("tr");
-                            tr.innerHTML = `
-                                <td><strong>${fileName}</strong></td>
-                                <td>${avgV} V</td>
-                                <td>${avgI} A</td>
-                                <td>${avgP} kW</td>
-                                <td>${avgQ} kVAR</td>
-                                <td>${avgPF}</td>
-                                <td><span class="badge">Fixed (|P|)</span></td>
-                            `;
-                            tableBody.appendChild(tr);
-
-                            // Akumulasi untuk Stat Cards di atas
-                            totalV += parseFloat(avgV);
-                            totalI += parseFloat(avgI);
-                            totalP += parseFloat(avgP);
-                            totalPF += parseFloat(avgPF);
-                            validFileCount++;
-
-                            // Update Stat Cards Overall
-                            document.getElementById("avg-voltage").innerText = (totalV / validFileCount).toFixed(2);
-                            document.getElementById("avg-current").innerText = (totalI / validFileCount).toFixed(2);
-                            document.getElementById("avg-power").innerText = (totalP / validFileCount).toFixed(2);
-                            document.getElementById("avg-pf").innerText = (totalPF / validFileCount).toFixed(3);
-                        }
-                    });
-                } catch (err) {
-                    console.error("Gagal membaca file:", fileName, err);
+        for (const file of files) {
+            const filePath = `./data_aircon/${file}`;
+            try {
+                const response = await fetch(filePath);
+                if (!response.ok) {
+                    console.warn(`File tidak ditemukan atau gagal dimuat: ${filePath}`);
+                    continue;
                 }
+                const csvText = await response.text();
+
+                Papa.parse(csvText, {
+                    header: true,
+                    dynamicTyping: true,
+                    skipEmptyLines: true,
+                    // Format kunci header menjadi huruf kecil tanpa spasi/karakter khusus
+                    transformHeader: function(h) {
+                        return h.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    },
+                    complete: function(results) {
+                        const rows = results.data;
+                        if (!rows || rows.length === 0) return;
+
+                        // Debug untuk melihat kunci header yang sudah dibersihkan
+                        console.log(`Header pada ${file}:`, Object.keys(rows[0]));
+
+                        let sumV = 0, sumI = 0, sumP = 0, sumQ = 0, sumPF = 0, validRows = 0;
+
+                        rows.forEach(row => {
+                            // Mencari nilai dari berbagai variasi nama header
+                            let v = 0, i = 0, p = 0, q = 0, pf = 0;
+
+                            for (let key in row) {
+                                let val = parseNumber(row[key]);
+                                
+                                // Deteksi kolom berdasarkan kata kunci
+                                if (key.includes('v') || key.includes('volt') || key.includes('tegangan')) {
+                                    if (v === 0) v = val;
+                                } else if (key.includes('current') || key.includes('amp') || key.includes('arus') || key === 'i') {
+                                    if (i === 0) i = val;
+                                } else if (key.includes('active') || key.includes('power') || key.includes('daya') || key === 'p') {
+                                    if (p === 0) p = val;
+                                } else if (key.includes('reactive') || key.includes('kvar') || key === 'q') {
+                                    if (q === 0) q = val;
+                                } else if (key.includes('pf') || key.includes('factor') || key.includes('cos')) {
+                                    if (pf === 0) pf = val;
+                                }
+                            }
+
+                            sumV += v;
+                            sumI += i;
+                            sumP += Math.abs(p); // Meng-absolutkan nilai daya aktif
+                            sumQ += Math.abs(q);
+                            sumPF += Math.abs(pf);
+                            validRows++;
+                        });
+
+                        if (validRows === 0) return;
+
+                        const avgV = (sumV / validRows).toFixed(2);
+                        const avgI = (sumI / validRows).toFixed(2);
+                        const avgP = (sumP / validRows).toFixed(2);
+                        const avgQ = (sumQ / validRows).toFixed(2);
+                        const avgPF = (sumPF / validRows).toFixed(3);
+
+                        // Tampilkan ke tabel
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `
+                            <td><strong>${file}</strong></td>
+                            <td>${avgV} V</td>
+                            <td>${avgI} A</td>
+                            <td>${avgP} kW</td>
+                            <td>${avgQ} kVAR</td>
+                            <td>${avgPF}</td>
+                            <td><span class="badge badge-positive">Absolut Active (|P|)</span></td>
+                        `;
+                        tableBody.appendChild(tr);
+
+                        // Akumulasi Card
+                        totalV += parseFloat(avgV);
+                        totalI += parseFloat(avgI);
+                        totalP += parseFloat(avgP);
+                        totalPF += parseFloat(avgPF);
+                        validFileCount++;
+
+                        document.getElementById("avg-voltage").innerText = (totalV / validFileCount).toFixed(2);
+                        document.getElementById("avg-current").innerText = (totalI / validFileCount).toFixed(2);
+                        document.getElementById("avg-power").innerText = (totalP / validFileCount).toFixed(2);
+                        document.getElementById("avg-pf").innerText = (totalPF / validFileCount).toFixed(3);
+                    }
+                });
+            } catch (err) {
+                console.error("Error memproses file:", file, err);
             }
         }
+    }
 
-        window.onload = processAllCSV;
-    </script>
+    window.onload = loadAndProcessCSV;
+</script>
 </body>
 </html>
