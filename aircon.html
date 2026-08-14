@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analisis Kelistrikan 3-Phase AC </title>
+    <title>Analisis Kelistrikan 3-Phase AC-Lampu </title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #ffffff; color: #212529; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -23,8 +23,8 @@
 
 <div class="container-fluid px-4">
     <header class="pb-3 mb-4 border-bottom">
-        <h3 class="fw-bold text-heading">Dashboard Analisis Kelistrikan 3-Phase Sistem Pendingin Ruangan</h3>
-        <p class="text-muted mb-0">Laporan Rata-Rata Pengukuran AC di Panel Gedung Rektorat Unesa </p>
+        <h3 class="fw-bold text-heading">Dashboard Analisis Kelistrikan 3-Phase AC dan Lampu </h3>
+        <p class="text-muted mb-0">Laporan Rata-Rata Pengukuran di Panel Gedung Rektorat Unesa </p>
     </header>
 
     <!-- Ringkasan Atas (Overall Summary Cards) -->
@@ -79,7 +79,7 @@
                 </thead>
                 <tbody id="summaryTableBody">
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-4">Membaca file dari folder /data_aircon/...</td>
+                        <td colspan="9" class="text-center text-muted py-4">Membaca file dari folder /data_panel/...</td>
                     </tr>
                 </tbody>
             </table>
@@ -116,17 +116,30 @@
     }
 
     const csvFiles = [
-        'Aircon2_20260806.csv',
-        'Aircon3_20260806.csv',
-        'Aircon4_20260805.csv',
-        'Aircon5_20260805.csv',
-        'Aircon6_20260805.csv',
-        'Aircon7_20260805.csv',
-        'Aircon8_20260805.csv',
-        'Aircon9_20260805.csv',
-        'Aircon10_20260805.csv',
-        'Aircon11_20260805.csv',
-        'Aircon12_20260805.csv'
+        'LampG_20260811.csv',
+        'Lamp1_20260811.csv',
+        'Lamp2_20260811.csv',
+        'Lamp3_20260811.csv',
+        'Lamp4_20260811.csv',
+        'Lamp5_20260811.csv',
+        'Lamp6_20260811.csv',
+        'Lamp7_20260811.csv',
+        'Lamp8_20260811.csv',
+        'Lamp9_20260811.csv',
+        'Lamp10_20260811.csv',
+        'Lamp11_20260811.csv',
+        'Lamp12_20260811.csv',
+        'AC2_20260811.csv',
+        'AC3_20260811.csv',
+        'AC4_20260811.csv',
+        'AC5_20260811.csv',
+        'AC6_20260811.csv',
+        'AC7_20260811.csv',
+        'AC8_20260811.csv',
+        'AC9_20260811.csv',
+        'AC10_20260811.csv',
+        'AC11_20260811.csv',
+        'AC12_20260811.csv'
     ];
 
     const tableBody = document.getElementById("summaryTableBody");
@@ -136,7 +149,7 @@
         let grandP = 0, sumV = 0, sumI = 0, sumPF = 0, fileCount = 0;
 
         for (const fileName of csvFiles) {
-            const filePath = `./data_aircon/${fileName}`;
+            const filePath = `./data_panel/${fileName}`;
             try {
                 const response = await fetch(filePath);
                 if (!response.ok) continue;
