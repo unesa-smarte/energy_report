@@ -90,9 +90,14 @@
     <div class="alert alert-secondary mt-3 p-3 text-dark fs-7" role="alert">
         <h6 class="fw-bold text-dark mb-2">📌 Catatan & Indikator Kualitas Daya:</h6>
         <ul class="mb-0 ps-3">
-            <li><strong>THD Tegangan (> 5% Standard IEEE 519):</strong> Batas maksimum distorsi harmonisa tegangan yang diizinkan untuk sistem kelistrikan tegangan rendah (LV). Ditandai badge kuning <span class="badge badge-warning">V-THD > 5%</span>.</li>
-            <li><strong>THD Arus (> 10%):</strong> Menandakan adanya gangguan harmonisa arus akibat penggunaan beban non-linear (inverter/VFD kompresor AC). Ditandai badge kuning <span class="badge badge-warning">I-THD > 10%</span>.</li>
-            <li><strong>Beban Tidak Seimbang (Unbalanced > 15% NEMA Standard):</strong> Terjadi jika selisih arus antar fasa R, S, dan T terlalu jauh. Ditandai badge merah <span class="badge bg-danger text-white">Beban Tidak Seimbang</span>.</li>
+            <li><strong>Power Factor (PF):</strong> Indikator efisiensi daya. 
+                <span class="text-success fw-bold">PF ≥ 0.85 (Bagus/Normal)</span>, 
+                <span class="text-warning fw-bold bg-dark px-1">PF 0.70 - 0.84 (Kurang)</span>, 
+                <span class="text-danger fw-bold">PF &lt; 0.70 (Jelek / Kena Denda KVARh)</span>.
+            </li>
+            <li><strong>THD Tegangan (> 5% IEEE 519):</strong> Ditandai badge kuning <span class="badge badge-warning">V-THD > 5%</span>.</li>
+            <li><strong>THD Arus (> 10%):</strong> Ditandai badge kuning <span class="badge badge-warning">I-THD > 10%</span>.</li>
+            <li><strong>Beban Tidak Seimbang (> 15% NEMA):</strong> Ditandai badge merah <span class="badge bg-danger text-white">Beban Tidak Seimbang</span>.</li>
         </ul>
     </div>
     
@@ -114,13 +119,24 @@
         return isNaN(num) ? 0 : Math.abs(num);
     }
 
-    // Fungsi pembantu untuk mencari indeks kolom dengan berbagai variasi penamaan header
     function findColumnIndex(headers, possibleNames) {
         for (let name of possibleNames) {
             let idx = headers.findIndex(h => h.trim().toUpperCase() === name.toUpperCase());
             if (idx !== -1) return idx;
         }
         return -1;
+    }
+
+    // Helper untuk styling teks Power Factor berdasarkan nilai
+    function getPFTextStyle(pfValue) {
+        const val = parseFloat(pfValue);
+        if (val >= 0.85) {
+            return 'fw-bold text-success'; // Bagus (Hijau)
+        } else if (val >= 0.70) {
+            return 'fw-bold text-warning bg-dark px-1 rounded'; // Kurang (Kuning dengan background gelap agar terbaca jelas)
+        } else {
+            return 'fw-bold text-danger'; // Jelek (Merah)
+        }
     }
 
     const csvFiles = [
@@ -163,7 +179,6 @@
                         const rows = results.data;
                         if (!rows || rows.length === 0) return;
 
-                        // Pemetaan Indeks Kolom yang Lebih Aman
                         const idxUA = findColumnIndex(headers, ['UA', 'Ua', 'V1']);
                         const idxUB = findColumnIndex(headers, ['UB', 'Ub', 'V2']);
                         const idxUC = findColumnIndex(headers, ['UC', 'Uc', 'V3']);
@@ -230,7 +245,6 @@
 
                         if (count === 0) return;
 
-                        // Rata-rata Parameter
                         const vR = (ur / count).toFixed(1);
                         const vS = (us / count).toFixed(1);
                         const vT = (ut / count).toFixed(1);
@@ -247,7 +261,6 @@
                         const iThdS = (ithds / count).toFixed(1);
                         const iThdT = (ithdt / count).toFixed(1);
 
-                        // Konversi Watt ke kW jika nilai rata-rata > 100 (mencegah pembacaan daya membengkak)
                         let rawPR = pr / count;
                         let rawPS = ps / count;
                         let rawPT = pt / count;
@@ -290,8 +303,16 @@
                             iUnbalance = ((maxDevI / numIAvg) * 100).toFixed(1);
                         }
 
-                        // Penentuan Badge Status Kualitas Daya
+                        // Penentuan Badge Status Kualitas Daya & PF
                         let statusBadges = '';
+                        const pfTotNum = parseFloat(pfTotalCalculated);
+
+                        if (pfTotNum < 0.70) {
+                            statusBadges += '<span class="badge bg-danger text-white me-1">PF Sangat Buruk (&lt;0.70)</span>';
+                        } else if (pfTotNum < 0.85) {
+                            statusBadges += '<span class="badge badge-warning me-1">PF Kurang (&lt;0.85)</span>';
+                        }
+
                         if (parseFloat(vThdR) > 5 || parseFloat(vThdS) > 5 || parseFloat(vThdT) > 5) {
                             statusBadges += '<span class="badge badge-warning me-1">V-THD > 5%</span>';
                         }
@@ -305,7 +326,7 @@
                             statusBadges = '<span class="badge badge-normal">Normal</span>';
                         }
 
-                        // Render Baris Tabel
+                        // Render Baris Tabel dengan Style PF yang Dinamis
                         const rowsHTML = `
                             <tr>
                                 <td rowspan="3" class="text-start fw-bold align-middle bg-light">
@@ -318,10 +339,10 @@
                                 <td>${iR} A</td>
                                 <td>${iThdR}%</td>
                                 <td>${pR} kW</td>
-                                <td>${pfR}</td>
+                                <td><span class="${getPFTextStyle(pfR)}">${pfR}</span></td>
                                 <td rowspan="3" class="align-middle bg-light">
                                     <div class="fw-bold text-dark fs-5">${pSumAvg} kW</div>
-                                    <small class="text-muted d-block mb-1">PF Total: ${pfTotalCalculated}</small>
+                                    <small class="d-block mb-1">PF Total: <span class="${getPFTextStyle(pfTotalCalculated)}">${pfTotalCalculated}</span></small>
                                     <small class="text-secondary d-block mb-2 font-monospace">Unbalance: ${iUnbalance}%</small>
                                     <div>${statusBadges}</div>
                                 </td>
@@ -333,7 +354,7 @@
                                 <td>${iS} A</td>
                                 <td>${iThdS}%</td>
                                 <td>${pS} kW</td>
-                                <td>${pfS}</td>
+                                <td><span class="${getPFTextStyle(pfS)}">${pfS}</span></td>
                             </tr>
                             <tr>
                                 <td class="fw-bold text-primary bg-light">Fasa T</td>
@@ -342,12 +363,11 @@
                                 <td>${iT} A</td>
                                 <td>${iThdT}%</td>
                                 <td>${pT} kW</td>
-                                <td>${pfT}</td>
+                                <td><span class="${getPFTextStyle(pfT)}">${pfT}</span></td>
                             </tr>
                         `;
                         tableBody.innerHTML += rowsHTML;
 
-                        // Akumulasi Card Top Summary
                         grandP += parseFloat(pSumAvg);
                         sumV += parseFloat(avgLocationV);
                         sumI += parseFloat(avgLocationI);
