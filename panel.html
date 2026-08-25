@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summary & Perbandingan Pengukuran Panel Rektorat</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #f4f6f9; color: #212529; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .card-custom { background-color: #ffffff; border: 1px solid #dee2e6; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+        .text-heading { color: #0d6efd; }
+        .chart-container { position: relative; height: 320px; width: 100%; }
+        .list-group-item-action:hover { background-color: #e9ecef; }
+    </style>
+</head>
+<body class="py-4">
+
+<div class="container-fluid px-4">
+    <!-- Header -->
+    <header class="pb-3 mb-4 border-bottom">
+        <h3 class="fw-bold text-heading">Dashboard Summary & Perbandingan Pengukuran Panel</h3>
+        <p class="text-muted mb-0">Monitoring Tren Kualitas Daya dan Riwayat Pengukuran Gedung Rektorat Unesa</p>
+    </header>
+
+    <!-- Navigasi Link Laporan Pengukuran Mingguan -->
+    <div class="card card-custom p-3 mb-4">
+        <h5 class="fw-bold text-dark mb-3">📁 Daftar Riwayat Laporan Pengukuran (Mingguan)</h5>
+        <div class="row g-2" id="reportLinksContainer">
+            <!-- Link ke file HTML detail mingguan akan di-render di sini -->
+        </div>
+    </div>
+
+    <!-- Section 1: Grafik Parameter Total (Daya Aktif, THD Rerata, PF Rerata) -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card card-custom p-3">
+                <h6 class="fw-bold text-primary text-center">Total Daya Aktif (P Sum)</h6>
+                <div class="chart-container">
+                    <canvas id="chartTotalP"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card card-custom p-3">
+                <h6 class="fw-bold text-warning text-center">Rerata THD Arus (%)</h6>
+                <div class="chart-container">
+                    <canvas id="chartTotalITHD"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card card-custom p-3">
+                <h6 class="fw-bold text-success text-center">Rerata Power Factor (PF)</h6>
+                <div class="chart-container">
+                    <canvas id="chartTotalPF"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 2: Grafik Perbandingan Per Fasa (R, S, T) -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card card-custom p-3">
+                <h6 class="fw-bold text-dark text-center">Daya Aktif per Fasa (kW)</h6>
+                <div class="chart-container">
+                    <canvas id="chartPhaseP"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card card-custom p-3">
+                <h6 class="fw-bold text-dark text-center">THD Arus per Fasa (%)</h6>
+                <div class="chart-container">
+                    <canvas id="chartPhaseITHD"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card card-custom p-3">
+                <h6 class="fw-bold text-dark text-center">Power Factor per Fasa</h6>
+                <div class="chart-container">
+                    <canvas id="chartPhasePF"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    /**
+     * CONFIUGURATION AREA:
+     * Cukup tambahkan file HTML laporan baru dan label tampilannya di array ini setiap kali selesai mengukur.
+     */
+    const reportsList = [
+        { file: 'panelwk2ags26.html', label: 'Pengukuran Mg ke-2 (11 Ags 2026)' },
+        { file: 'panelwk4ags26.html', label: 'Pengukuran Mg ke-4 (24 Ags 2026)' }
+        // Contoh penambahan berikutnya:
+        // { file: 'panelwk1sept26.html', label: 'Pengukuran Wk 1 (01 Sept 2026)' }
+    ];
+
+    // Render Tombol Link Navigasi
+    function renderReportLinks() {
+        const container = document.getElementById('reportLinksContainer');
+        container.innerHTML = reportsList.map(item => `
+            <div class="col-md-4 col-sm-6">
+                <a href="${item.file}" target="_blank" class="btn btn-outline-primary w-100 text-start d-flex justify-content-between align-items-center rounded-3 p-2">
+                    <span>📄 ${item.label}</span>
+                    <small class="badge bg-primary">Buka Laporan ↗</small>
+                </a>
+            </div>
+        `).join('');
+    }
+
+    // Fungsi Fetching Data HTML Mingguan & Scraping Card Ringkasan
+    async function fetchSummaryData() {
+        const labels = [];
+        const totalP = [], avgITHD = [], avgPF = [];
+        const phasePR = [], phasePS = [], phasePT = [];
+        const phaseITHDR = [], phaseITHDS = [], phaseITHDT = [];
+        const phasePFR = [], phasePFS = [], phasePFT = [];
+
+        for (const report of reportsList) {
+            try {
+                const res = await fetch(report.file);
+                if (!res.ok) continue;
+                const htmlText = await res.text();
+                
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, 'text/html');
+
+                labels.push(report.label.split('(')[0].trim());
+
+                // Ambil Nilai Ringkasan Utama dari Top Cards
+                const pVal = parseFloat(doc.getElementById('total-p')?.innerText || '0');
+                const pfVal = parseFloat(doc.getElementById('avg-pf')?.innerText || '0');
+                totalP.push(pVal);
+                avgPF.push(pfVal);
+
+                // Scraping Nilai Tabel untuk Per Fasa (Mengambil rata-rata sederhana dari kolom tabel)
+                let sumITHD_R = 0, sumITHD_S = 0, sumITHD_T = 0;
+                let sumP_R = 0, sumP_S = 0, sumP_T = 0;
+                let sumPF_R = 0, sumPF_S = 0, sumPF_T = 0;
+                let rowCount = 0;
+
+                const tableRows = doc.querySelectorAll('#summaryTableBody tr');
+                for (let i = 0; i < tableRows.length; i += 3) {
+                    const rRow = tableRows[i];
+                    const sRow = tableRows[i+1];
+                    const tRow = tableRows[i+2];
+
+                    if (rRow && sRow && tRow) {
+                        const cellsR = rRow.querySelectorAll('td');
+                        const cellsS = sRow.querySelectorAll('td');
+                        const cellsT = tRow.querySelectorAll('td');
+
+                        // Index Kolom: 3: THD-I, 4: Daya P, 5: PF
+                        sumITHD_R += parseFloat(cellsR[3]?.innerText || 0);
+                        sumP_R += parseFloat(cellsR[4]?.innerText || 0);
+                        sumPF_R += parseFloat(cellsR[5]?.innerText || 0);
+
+                        sumITHD_S += parseFloat(cellsS[3]?.innerText || 0);
+                        sumP_S += parseFloat(cellsS[4]?.innerText || 0);
+                        sumPF_S += parseFloat(cellsS[5]?.innerText || 0);
+
+                        sumITHD_T += parseFloat(cellsT[3]?.innerText || 0);
+                        sumP_T += parseFloat(cellsT[4]?.innerText || 0);
+                        sumPF_T += parseFloat(cellsT[5]?.innerText || 0);
+
+                        rowCount++;
+                    }
+                }
+
+                const count = rowCount || 1;
+                phasePR.push((sumP_R / count).toFixed(2));
+                phasePS.push((sumP_S / count).toFixed(2));
+                phasePT.push((sumP_T / count).toFixed(2));
+
+                phaseITHDR.push((sumITHD_R / count).toFixed(1));
+                phaseITHDS.push((sumITHD_S / count).toFixed(1));
+                phaseITHDT.push((sumITHD_T / count).toFixed(1));
+
+                phasePFR.push((sumPF_R / count).toFixed(3));
+                phasePFS.push((sumPF_S / count).toFixed(3));
+                phasePFT.push((sumPF_T / count).toFixed(3));
+
+                avgITHD.push((((sumITHD_R + sumITHD_S + sumITHD_T) / 3) / count).toFixed(1));
+
+            } catch (err) {
+                console.error("Gagal membaca file:", report.file, err);
+            }
+        }
+
+        renderCharts({
+            labels, totalP, avgITHD, avgPF,
+            phasePR, phasePS, phasePT,
+            phaseITHDR, phaseITHDS, phaseITHDT,
+            phasePFR, phasePFS, phasePFT
+        });
+    }
+
+    // Generator Grafik Batang dengan Chart.js
+    function renderCharts(d) {
+        const createBarChart = (canvasId, datasets, yLabel) => {
+            new Chart(document.getElementById(canvasId), {
+                type: 'bar',
+                data: { labels: d.labels, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } },
+                    scales: { y: { title: { display: true, text: yLabel }, beginAtZero: true } }
+                }
+            });
+        };
+
+        // 1. Grafik Total
+        createBarChart('chartTotalP', [{ label: 'Daya Total (kW)', data: d.totalP, backgroundColor: '#0d6efd' }], 'kW');
+        createBarChart('chartTotalITHD', [{ label: 'Rerata THD Arus (%)', data: d.avgITHD, backgroundColor: '#ffc107' }], '%');
+        createBarChart('chartTotalPF', [{ label: 'Rerata PF', data: d.avgPF, backgroundColor: '#198754' }], 'PF');
+
+        // 2. Grafik Fasa R-S-T
+        createBarChart('chartPhaseP', [
+            { label: 'Fasa R', data: d.phasePR, backgroundColor: '#dc3545' },
+            { label: 'Fasa S', data: d.phasePS, backgroundColor: '#ffc107' },
+            { label: 'Fasa T', data: d.phasePT, backgroundColor: '#0d6efd' }
+        ], 'kW');
+
+        createBarChart('chartPhaseITHD', [
+            { label: 'Fasa R', data: d.phaseITHDR, backgroundColor: '#dc3545' },
+            { label: 'Fasa S', data: d.phaseITHDS, backgroundColor: '#ffc107' },
+            { label: 'Fasa T', data: d.phaseITHDT, backgroundColor: '#0d6efd' }
+        ], '%');
+
+        createBarChart('chartPhasePF', [
+            { label: 'Fasa R', data: d.phasePFR, backgroundColor: '#dc3545' },
+            { label: 'Fasa S', data: d.phasePFS, backgroundColor: '#ffc107' },
+            { label: 'Fasa T', data: d.phasePFT, backgroundColor: '#0d6efd' }
+        ], 'PF');
+    }
+
+    window.onload = () => {
+        renderReportLinks();
+        fetchSummaryData();
+    };
+</script>
+
+</body>
+</html>
