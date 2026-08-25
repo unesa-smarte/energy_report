@@ -72,8 +72,8 @@
         </div>
     </div>
 
-    <!-- Section 2: Container Seri Grafik Individual Per Titik Ukur (Auto-Generated) -->
-    <h5 class="fw-bold text-dark mb-3">⚡ 2. Perbandingan Tren Mingguan Per Titik Ukur</h5>
+    <!-- Section 2: Container Seri Grafik Individual Per Titik Ukur (Auto-Grouped) -->
+    <h5 class="fw-bold text-dark mb-3">⚡ 2. Perbandingan Tren Mingguan Per Titik Pengukuran</h5>
     <div id="pointsChartsContainer"></div>
 </div>
 
@@ -100,9 +100,17 @@
         return -1;
     }
 
-    function extractPointName(csvFileName) {
-        let clean = csvFileName.replace(/^data_panel\//, '');
-        return clean.replace(/\.csv$/i, '');
+    /**
+     * Normalisasi Nama Titik Ukur:
+     * Mengubah nama file CSV (seperti "AC2.csv", "ac2_wk2.csv", "data_panel/LampG.CSV")
+     * menjadi identitas baku yang seragam (misal: "AC2", "LAMPG").
+     */
+    function normalizePointName(csvFileName) {
+        let clean = csvFileName.replace(/^data_panel\//i, '');
+        clean = clean.replace(/\.csv$/i, '');
+        // Hapus suffix penanda minggu jika terbawa di nama file (misal: _wk2, _wk4, -wk2)
+        clean = clean.replace(/[_  -]?wk\d+/i, '');
+        return clean.trim().toUpperCase();
     }
 
     // Render Link Laporan
@@ -123,7 +131,7 @@
         const totalP_arr = [], avgITHD_arr = [], avgPF_arr = [];
 
         const pointNamesSet = new Set();
-        // Matrix: pointDataMap[pointName][periodIndex] = { p, ithd, pf }
+        // Matrix: pointDataMap[NORMALIZED_NAME][periodIndex] = { p, ithd, pf }
         const pointDataMap = {};
 
         try {
@@ -158,14 +166,14 @@
                 let validFileCount = 0;
 
                 for (let csvFile of csvFiles) {
-                    let pointName = extractPointName(csvFile);
+                    let pointName = normalizePointName(csvFile);
                     pointNamesSet.add(pointName);
 
                     if (!pointDataMap[pointName]) {
                         pointDataMap[pointName] = {};
                     }
 
-                    let cleanFileName = csvFile.replace(/^data_panel\//, '');
+                    let cleanFileName = csvFile.replace(/^data_panel\//i, '');
                     loadingDetailText.innerText = `Memproses ${pointName} (${report.label})...`;
 
                     try {
@@ -244,8 +252,8 @@
             // 1. Render Section 1 (Total)
             renderTotalCharts(periodLabels, totalP_arr, avgITHD_arr, avgPF_arr);
 
-            // 2. Build & Render Section 2 (Dinamis per Titik Ukur)
-            const pointList = Array.from(pointNamesSet);
+            // 2. Build & Render Section 2 (Gabungkan Titik Ukur Secara Otomatis)
+            const pointList = Array.from(pointNamesSet).sort();
             renderPointSeriesCharts(pointList, periodLabels, pointDataMap);
 
         } catch (err) {
@@ -289,10 +297,10 @@
         const container = document.getElementById('pointsChartsContainer');
         container.innerHTML = '';
 
-        pointList.forEach((pointName, idx) => {
+        pointList.forEach((pointName) => {
             const safeId = pointName.replace(/[^a-zA-Z0-9]/g, '_');
             
-            // Susun array data mingguan untuk titik ini
+            // Ambil data per minggu untuk titik pengukuran ini
             const pArr = [], ithdArr = [], pfArr = [];
             periodLabels.forEach((_, pIdx) => {
                 const item = pointDataMap[pointName] ? pointDataMap[pointName][pIdx] : null;
@@ -301,12 +309,12 @@
                 pfArr.push(item ? item.pf : 0);
             });
 
-            // Template HTML per Titik Ukur
+            // Template Card per Titik Pengukuran Baku
             const cardHtml = `
                 <div class="card card-custom p-3 mb-4">
                     <div class="border-bottom pb-2 mb-3 d-flex align-items-center justify-content-between">
                         <h6 class="fw-bold text-dark m-0">📌 Titik Pengukuran: <span class="text-primary fs-5">${pointName}</span></h6>
-                        <span class="badge bg-light text-dark border">Perbandingan Tren Mingguan</span>
+                        <span class="badge bg-light text-dark border">Tren Mingguan (${periodLabels.join(' vs ')})</span>
                     </div>
                     <div class="row g-3">
                         <div class="col-md-4">
@@ -333,7 +341,7 @@
             
             container.insertAdjacentHTML('beforeend', cardHtml);
 
-            // Render Chart per Card
+            // Render 3 Chart dalam 1 Baris Card
             setTimeout(() => {
                 createBarChart(`chart_P_${safeId}`, periodLabels, pArr, `Daya ${pointName}`, '#0d6efd', 'kW');
                 createBarChart(`chart_ITHD_${safeId}`, periodLabels, ithdArr, `THD ${pointName}`, '#ffc107', '%');
