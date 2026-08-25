@@ -3,87 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Summary & Perbandingan Pengukuran Panel Rektorat</title>
+    <title>Dashboard Summary & Perbandingan Pengukuran Panel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Chart.js Library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         body { background-color: #f4f6f9; color: #212529; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         .card-custom { background-color: #ffffff; border: 1px solid #dee2e6; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
         .text-heading { color: #0d6efd; }
         .chart-container { position: relative; height: 320px; width: 100%; }
-        .list-group-item-action:hover { background-color: #e9ecef; }
     </style>
 </head>
 <body class="py-4">
 
 <div class="container-fluid px-4">
-    <!-- Header -->
     <header class="pb-3 mb-4 border-bottom">
         <h3 class="fw-bold text-heading">Dashboard Summary & Perbandingan Pengukuran Panel</h3>
-        <p class="text-muted mb-0">Monitoring Tren Kualitas Daya dan Riwayat Pengukuran Gedung Rektorat Unesa</p>
+        <p class="text-muted mb-0">Monitoring Tren Kualitas Daya dan Riwayat Pengukuran Gedung Rektorat</p>
     </header>
 
     <!-- Navigasi Link Laporan Pengukuran Mingguan -->
     <div class="card card-custom p-3 mb-4">
         <h5 class="fw-bold text-dark mb-3">📁 Daftar Riwayat Laporan Pengukuran (Mingguan)</h5>
-        <div class="row g-2" id="reportLinksContainer">
-            <!-- Link ke file HTML detail mingguan akan di-render di sini -->
-        </div>
+        <div class="row g-2" id="reportLinksContainer"></div>
     </div>
 
-    <!-- Section 1: Grafik Parameter Total (Daya Aktif, THD Rerata, PF Rerata) -->
+    <!-- Section 1: Grafik Parameter Total Antar Periode -->
+    <h5 class="fw-bold text-dark mb-3">📊 1. Perbandingan Total Antar Periode Pengukuran</h5>
     <div class="row g-3 mb-4">
         <div class="col-md-4">
             <div class="card card-custom p-3">
-                <h6 class="fw-bold text-primary text-center">Total Daya Aktif (P Sum)</h6>
-                <div class="chart-container">
-                    <canvas id="chartTotalP"></canvas>
-                </div>
+                <h6 class="fw-bold text-primary text-center">Total Daya Aktif P (kW)</h6>
+                <div class="chart-container"><canvas id="chartTotalP"></canvas></div>
             </div>
         </div>
         <div class="col-md-4">
             <div class="card card-custom p-3">
                 <h6 class="fw-bold text-warning text-center">Rerata THD Arus (%)</h6>
-                <div class="chart-container">
-                    <canvas id="chartTotalITHD"></canvas>
-                </div>
+                <div class="chart-container"><canvas id="chartTotalITHD"></canvas></div>
             </div>
         </div>
         <div class="col-md-4">
             <div class="card card-custom p-3">
                 <h6 class="fw-bold text-success text-center">Rerata Power Factor (PF)</h6>
-                <div class="chart-container">
-                    <canvas id="chartTotalPF"></canvas>
-                </div>
+                <div class="chart-container"><canvas id="chartTotalPF"></canvas></div>
             </div>
         </div>
     </div>
 
-    <!-- Section 2: Grafik Perbandingan Per Fasa (R, S, T) -->
+    <!-- Section 2: Grafik Perbandingan Per Fasa (R, S, T) Total Keseluruhan -->
+    <h5 class="fw-bold text-dark mb-3">⚡ 2. Perbandingan Parameter per Fasa (R-S-T)</h5>
     <div class="row g-3 mb-4">
         <div class="col-md-4">
             <div class="card card-custom p-3">
                 <h6 class="fw-bold text-dark text-center">Daya Aktif per Fasa (kW)</h6>
-                <div class="chart-container">
-                    <canvas id="chartPhaseP"></canvas>
-                </div>
+                <div class="chart-container"><canvas id="chartPhaseP"></canvas></div>
             </div>
         </div>
         <div class="col-md-4">
             <div class="card card-custom p-3">
                 <h6 class="fw-bold text-dark text-center">THD Arus per Fasa (%)</h6>
-                <div class="chart-container">
-                    <canvas id="chartPhaseITHD"></canvas>
-                </div>
+                <div class="chart-container"><canvas id="chartPhaseITHD"></canvas></div>
             </div>
         </div>
         <div class="col-md-4">
             <div class="card card-custom p-3">
                 <h6 class="fw-bold text-dark text-center">Power Factor per Fasa</h6>
-                <div class="chart-container">
-                    <canvas id="chartPhasePF"></canvas>
-                </div>
+                <div class="chart-container"><canvas id="chartPhasePF"></canvas></div>
             </div>
         </div>
     </div>
@@ -91,160 +77,222 @@
 
 <script>
     /**
-     * CONFIUGURATION AREA:
-     * Cukup tambahkan file HTML laporan baru dan label tampilannya di array ini setiap kali selesai mengukur.
+     * PENGATURAN UTAMA:
+     * Cukup tambahkan file HTML mingguan baru ke dalam array ini.
+     * Script akan otomatis mengambil list file CSV di dalamnya dan menghitung seluruh grafik.
      */
-    const reportsList = [
-        { file: 'panelwk2ags26.html', label: 'Pengukuran Mg ke-2 (11 Ags 2026)' },
-        { file: 'panelwk4ags26.html', label: 'Pengukuran Mg ke-4 (24 Ags 2026)' }
-        // Contoh penambahan berikutnya:
-        // { file: 'panelwk1sept26.html', label: 'Pengukuran Wk 1 (01 Sept 2026)' }
+    const measurementReports = [
+        { file: 'panelwk2ags26.html', label: 'Wk 2 (11 Ags 2026)' },
+        { file: 'panelwk4ags26.html', label: 'Wk 4 (24 Ags 2026)' }
     ];
 
-    // Render Tombol Link Navigasi
-    function renderReportLinks() {
-        const container = document.getElementById('reportLinksContainer');
-        container.innerHTML = reportsList.map(item => `
-            <div class="col-md-4 col-sm-6">
-                <a href="${item.file}" target="_blank" class="btn btn-outline-primary w-100 text-start d-flex justify-content-between align-items-center rounded-3 p-2">
-                    <span>📄 ${item.label}</span>
-                    <small class="badge bg-primary">Buka Laporan ↗</small>
-                </a>
-            </div>
-        `).join('');
+    let chartsInstance = {};
+
+    function parseVal(val) {
+        if (!val) return 0;
+        let str = String(val).replace(',', '.').trim();
+        let parts = str.split('.');
+        if (parts.length > 2) str = parts[0] + '.' + parts[1];
+        let num = parseFloat(str);
+        return isNaN(num) ? 0 : Math.abs(num);
     }
 
-    // Fungsi Fetching Data HTML Mingguan & Scraping Card Ringkasan
-    async function fetchSummaryData() {
+    function findCol(headers, names) {
+        for (let n of names) {
+            let idx = headers.findIndex(h => h.trim().toUpperCase() === n.toUpperCase());
+            if (idx !== -1) return idx;
+        }
+        return -1;
+    }
+
+    // Render Tombol Navigasi Link
+    document.getElementById('reportLinksContainer').innerHTML = measurementReports.map(r => `
+        <div class="col-md-4 col-sm-6">
+            <a href="${r.file}" target="_blank" class="btn btn-outline-primary w-100 text-start d-flex justify-content-between align-items-center rounded-3 p-2">
+                <span>📄 Laporan ${r.label}</span>
+                <small class="badge bg-primary">Buka ↗</small>
+            </a>
+        </div>
+    `).join('');
+
+    // Fungsi Utama Membaca HTML Mingguan & Parsing CSV-nya
+    async function initDashboard() {
         const labels = [];
-        const totalP = [], avgITHD = [], avgPF = [];
-        const phasePR = [], phasePS = [], phasePT = [];
-        const phaseITHDR = [], phaseITHDS = [], phaseITHDT = [];
-        const phasePFR = [], phasePFS = [], phasePFT = [];
+        const totalP_arr = [], avgITHD_arr = [], avgPF_arr = [];
+        
+        // Fasa R, S, T arrays
+        const pR = [], pS = [], pT = [];
+        const ithdR = [], ithdS = [], ithdT = [];
+        const pfR = [], pfS = [], pfT = [];
 
-        for (const report of reportsList) {
+        for (const report of measurementReports) {
+            labels.push(report.label);
+
             try {
-                const res = await fetch(report.file);
-                if (!res.ok) continue;
-                const htmlText = await res.text();
-                
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(htmlText, 'text/html');
+                // 1. Fetch file HTML mingguan
+                const resHtml = await fetch(report.file);
+                if (!resHtml.ok) throw new Error("Gagal memuat " + report.file);
+                const htmlText = await resHtml.text();
 
-                labels.push(report.label.split('(')[0].trim());
+                // 2. Ekstrak array const csvFiles = [...] menggunakan regex
+                const match = htmlText.match(/const\s+csvFiles\s*=\s*\[([\s\S]*?)\];/);
+                if (!match) {
+                    console.warn("Array csvFiles tidak ditemukan di", report.file);
+                    pushEmptyDefaults();
+                    continue;
+                }
 
-                // Ambil Nilai Ringkasan Utama dari Top Cards
-                const pVal = parseFloat(doc.getElementById('total-p')?.innerText || '0');
-                const pfVal = parseFloat(doc.getElementById('avg-pf')?.innerText || '0');
-                totalP.push(pVal);
-                avgPF.push(pfVal);
+                const csvFiles = match[1]
+                    .split(',')
+                    .map(f => f.replace(/['"\s\r\n]/g, ''))
+                    .filter(f => f.length > 0);
 
-                // Scraping Nilai Tabel untuk Per Fasa (Mengambil rata-rata sederhana dari kolom tabel)
-                let sumITHD_R = 0, sumITHD_S = 0, sumITHD_T = 0;
-                let sumP_R = 0, sumP_S = 0, sumP_T = 0;
-                let sumPF_R = 0, sumPF_S = 0, sumPF_T = 0;
-                let rowCount = 0;
+                let sumP = 0, sumITHD = 0, sumPF = 0;
+                let sumPR = 0, sumPS = 0, sumPT = 0;
+                let sumITHDR = 0, sumITHDS = 0, sumITHDT = 0;
+                let sumPFR = 0, sumPFS = 0, sumPFT = 0;
+                let validFileCount = 0;
 
-                const tableRows = doc.querySelectorAll('#summaryTableBody tr');
-                for (let i = 0; i < tableRows.length; i += 3) {
-                    const rRow = tableRows[i];
-                    const sRow = tableRows[i+1];
-                    const tRow = tableRows[i+2];
+                // 3. Loop dan fetch masing-masing file CSV
+                for (const csvFile of csvFiles) {
+                    try {
+                        const resCsv = await fetch(csvFile);
+                        if (!resCsv.ok) continue;
+                        const csvText = await resCsv.text();
 
-                    if (rRow && sRow && tRow) {
-                        const cellsR = rRow.querySelectorAll('td');
-                        const cellsS = sRow.querySelectorAll('td');
-                        const cellsT = tRow.querySelectorAll('td');
+                        const lines = csvText.split(/\r?\n/);
+                        let subIdx = lines.findIndex(l => l.includes('UA') && l.includes('UB'));
+                        if (subIdx === -1) subIdx = 11;
 
-                        // Index Kolom: 3: THD-I, 4: Daya P, 5: PF
-                        sumITHD_R += parseFloat(cellsR[3]?.innerText || 0);
-                        sumP_R += parseFloat(cellsR[4]?.innerText || 0);
-                        sumPF_R += parseFloat(cellsR[5]?.innerText || 0);
+                        const delim = lines[subIdx].includes(';') ? ';' : ',';
+                        const headers = lines[subIdx].split(delim).map(h => h.trim());
+                        const rows = Papa.parse(lines.slice(subIdx + 1).join('\n'), { delimiter: delim, skipEmptyLines: true }).data;
 
-                        sumITHD_S += parseFloat(cellsS[3]?.innerText || 0);
-                        sumP_S += parseFloat(cellsS[4]?.innerText || 0);
-                        sumPF_S += parseFloat(cellsS[5]?.innerText || 0);
+                        if (!rows || rows.length === 0) continue;
 
-                        sumITHD_T += parseFloat(cellsT[3]?.innerText || 0);
-                        sumP_T += parseFloat(cellsT[4]?.innerText || 0);
-                        sumPF_T += parseFloat(cellsT[5]?.innerText || 0);
+                        const idxPSum = findCol(headers, ['PSum', 'Psum', 'P_Sum', 'PTotal']);
+                        const idxTHDIA = findCol(headers, ['IA-THD', 'THDIA', 'THD_IA']);
+                        const idxTHDIB = findCol(headers, ['IB-THD', 'THDIB', 'THD_IB']);
+                        const idxTHDIC = findCol(headers, ['IC-THD', 'THDIC', 'THD_IC']);
+                        const idxPFA = findCol(headers, ['PFA', 'PFa', 'PF1']);
+                        const idxPFB = findCol(headers, ['PFB', 'PFb', 'PF2']);
+                        const idxPFC = findCol(headers, ['PFC', 'PFc', 'PF3']);
 
-                        rowCount++;
+                        let fileP = 0, fileITHD_R = 0, fileITHD_S = 0, fileITHD_T = 0;
+                        let filePF_R = 0, filePF_S = 0, filePF_T = 0;
+                        let rowCount = 0;
+
+                        rows.forEach(r => {
+                            if (r.length < 5) return;
+                            fileP += parseVal(r[idxPSum]);
+                            
+                            fileITHD_R += parseVal(r[idxTHDIA]);
+                            fileITHD_S += parseVal(r[idxTHDIB]);
+                            fileITHD_T += parseVal(r[idxTHDIC]);
+
+                            filePF_R += parseVal(r[idxPFA]);
+                            filePF_S += parseVal(r[idxPFB]);
+                            filePF_T += parseVal(r[idxPFC]);
+                            rowCount++;
+                        });
+
+                        if (rowCount > 0) {
+                            let avgP = fileP / rowCount;
+                            if (avgP > 100) avgP /= 1000; // Konversi ke kW jika masih Watt
+
+                            let rR = avgP / 3, rS = avgP / 3, rT = avgP / 3; // Estimasi pembagian fasa seimbang jika total Psum per record
+                            sumPR += rR; sumPS += rS; sumPT += rT;
+                            sumP += avgP;
+
+                            let aR = fileITHD_R / rowCount, aS = fileITHD_S / rowCount, aT = fileITHD_T / rowCount;
+                            sumITHDR += aR; sumITHDS += aS; sumITHDT += aT;
+                            sumITHD += (aR + aS + aT) / 3;
+
+                            let pRVal = filePF_R / rowCount, pSVal = filePF_S / rowCount, pTVal = filePF_T / rowCount;
+                            sumPFR += pRVal; sumPFS += pSVal; sumPFT += pTVal;
+                            sumPF += (pRVal + pSVal + pTVal) / 3;
+
+                            validFileCount++;
+                        }
+                    } catch (errCsv) {
+                        console.error("Gagal parse CSV:", csvFile, errCsv);
                     }
                 }
 
-                const count = rowCount || 1;
-                phasePR.push((sumP_R / count).toFixed(2));
-                phasePS.push((sumP_S / count).toFixed(2));
-                phasePT.push((sumP_T / count).toFixed(2));
+                if (validFileCount > 0) {
+                    totalP_arr.push(parseFloat(sumP.toFixed(2)));
+                    avgITHD_arr.push(parseFloat((sumITHD / validFileCount).toFixed(1)));
+                    avgPF_arr.push(parseFloat((sumPF / validFileCount).toFixed(3)));
 
-                phaseITHDR.push((sumITHD_R / count).toFixed(1));
-                phaseITHDS.push((sumITHD_S / count).toFixed(1));
-                phaseITHDT.push((sumITHD_T / count).toFixed(1));
+                    pR.push(parseFloat((sumPR / validFileCount).toFixed(2)));
+                    pS.push(parseFloat((sumPS / validFileCount).toFixed(2)));
+                    pT.push(parseFloat((sumPT / validFileCount).toFixed(2)));
 
-                phasePFR.push((sumPF_R / count).toFixed(3));
-                phasePFS.push((sumPF_S / count).toFixed(3));
-                phasePFT.push((sumPF_T / count).toFixed(3));
+                    ithdR.push(parseFloat((sumITHDR / validFileCount).toFixed(1)));
+                    ithdS.push(parseFloat((sumITHDS / validFileCount).toFixed(1)));
+                    ithdt.push ? ithdt.push(parseFloat((sumITHDT / validFileCount).toFixed(1))) : ithdT.push(parseFloat((sumITHDT / validFileCount).toFixed(1)));
 
-                avgITHD.push((((sumITHD_R + sumITHD_S + sumITHD_T) / 3) / count).toFixed(1));
+                    pfR.push(parseFloat((sumPFR / validFileCount).toFixed(3)));
+                    pfS.push(parseFloat((sumPFS / validFileCount).toFixed(3)));
+                    pfT.push(parseFloat((sumPFT / validFileCount).toFixed(3)));
+                } else {
+                    pushEmptyDefaults();
+                }
 
-            } catch (err) {
-                console.error("Gagal membaca file:", report.file, err);
+            } catch (errHtml) {
+                console.error("Gagal membaca HTML:", report.file, errHtml);
+                pushEmptyDefaults();
             }
         }
 
+        function pushEmptyDefaults() {
+            totalP_arr.push(0); avgITHD_arr.push(0); avgPF_arr.push(0);
+            pR.push(0); pS.push(0); pT.push(0);
+            ithdR.push(0); ithdS.push(0); ithdT.push(0);
+            pfR.push(0); pfS.push(0); pfT.push(0);
+        }
+
         renderCharts({
-            labels, totalP, avgITHD, avgPF,
-            phasePR, phasePS, phasePT,
-            phaseITHDR, phaseITHDS, phaseITHDT,
-            phasePFR, phasePFS, phasePFT
+            labels, totalP_arr, avgITHD_arr, avgPF_arr,
+            pR, pS, pT, ithdR, ithdS, ithdT, pfR, pfS, pfT
         });
     }
 
-    // Generator Grafik Batang dengan Chart.js
+    // Render Grafik Menggunakan Chart.js
     function renderCharts(d) {
-        const createBarChart = (canvasId, datasets, yLabel) => {
-            new Chart(document.getElementById(canvasId), {
+        const createBar = (id, datasets, yLabel, maxVal = null) => {
+            let opts = {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, title: { display: true, text: yLabel } } }
+            };
+            if (maxVal !== null) opts.scales.y.max = maxVal;
+
+            new Chart(document.getElementById(id), {
                 type: 'bar',
                 data: { labels: d.labels, datasets: datasets },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } },
-                    scales: { y: { title: { display: true, text: yLabel }, beginAtZero: true } }
-                }
+                options: opts
             });
         };
 
-        // 1. Grafik Total
-        createBarChart('chartTotalP', [{ label: 'Daya Total (kW)', data: d.totalP, backgroundColor: '#0d6efd' }], 'kW');
-        createBarChart('chartTotalITHD', [{ label: 'Rerata THD Arus (%)', data: d.avgITHD, backgroundColor: '#ffc107' }], '%');
-        createBarChart('chartTotalPF', [{ label: 'Rerata PF', data: d.avgPF, backgroundColor: '#198754' }], 'PF');
+        // Section 1: Total
+        createBar('chartTotalP', [{ label: 'Total P (kW)', data: d.totalP_arr, backgroundColor: '#0d6efd' }], 'kW');
+        createBar('chartTotalITHD', [{ label: 'Rerata THD Arus (%)', data: d.avgITHD_arr, backgroundColor: '#ffc107' }], '%');
+        createBar('chartTotalPF', [{ label: 'Rerata PF', data: d.avgPF_arr, backgroundColor: '#198754' }], 'PF', 1.0);
 
-        // 2. Grafik Fasa R-S-T
-        createBarChart('chartPhaseP', [
-            { label: 'Fasa R', data: d.phasePR, backgroundColor: '#dc3545' },
-            { label: 'Fasa S', data: d.phasePS, backgroundColor: '#ffc107' },
-            { label: 'Fasa T', data: d.phasePT, backgroundColor: '#0d6efd' }
-        ], 'kW');
+        // Section 2: Per Fasa (R, S, T)
+        const phaseDatasets = (r, s, t, labelPrefix) => [
+            { label: labelPrefix + ' Fasa R', data: r, backgroundColor: '#dc3545' },
+            { label: labelPrefix + ' Fasa S', data: s, backgroundColor: '#ffc107' },
+            { label: labelPrefix + ' Fasa T', data: t, backgroundColor: '#0d6efd' }
+        ];
 
-        createBarChart('chartPhaseITHD', [
-            { label: 'Fasa R', data: d.phaseITHDR, backgroundColor: '#dc3545' },
-            { label: 'Fasa S', data: d.phaseITHDS, backgroundColor: '#ffc107' },
-            { label: 'Fasa T', data: d.phaseITHDT, backgroundColor: '#0d6efd' }
-        ], '%');
-
-        createBarChart('chartPhasePF', [
-            { label: 'Fasa R', data: d.phasePFR, backgroundColor: '#dc3545' },
-            { label: 'Fasa S', data: d.phasePFS, backgroundColor: '#ffc107' },
-            { label: 'Fasa T', data: d.phasePFT, backgroundColor: '#0d6efd' }
-        ], 'PF');
+        createBar('chartPhaseP', phaseDatasets(d.pR, d.pS, d.pT, 'Daya'), 'kW');
+        createBar('chartPhaseITHD', phaseDatasets(d.ithdR, d.ithdS, d.ithdT, 'THD'), '%');
+        createBar('chartPhasePF', phaseDatasets(d.pfR, d.pfS, d.pfT, 'PF'), 'PF', 1.0);
     }
 
-    window.onload = () => {
-        renderReportLinks();
-        fetchSummaryData();
-    };
+    window.onload = initDashboard;
 </script>
 
 </body>
