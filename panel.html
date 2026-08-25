@@ -11,9 +11,8 @@
         body { background-color: #f4f6f9; color: #212529; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         .card-custom { background-color: #ffffff; border: 1px solid #dee2e6; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
         .text-heading { color: #0d6efd; }
-        .chart-container { position: relative; height: 320px; width: 100%; }
+        .chart-container { position: relative; height: 340px; width: 100%; }
         
-        /* Style Overlay Loading */
         #loadingOverlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -29,7 +28,7 @@
 </head>
 <body class="py-4">
 
-<!-- Loading Indicator Overlay -->
+<!-- Loading Indicator -->
 <div id="loadingOverlay">
     <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
         <span class="visually-hidden">Loading...</span>
@@ -50,8 +49,8 @@
         <div class="row g-2" id="reportLinksContainer"></div>
     </div>
 
-    <!-- Section 1: Grafik Parameter Total Antar Periode -->
-    <h5 class="fw-bold text-dark mb-3">📊 1. Perbandingan Total Antar Periode Pengukuran</h5>
+    <!-- Section 1: Grafik Total Gedung Antar Periode -->
+    <h5 class="fw-bold text-dark mb-3">📊 1. Ringkasan Total Sistem Antar Periode Pengukuran</h5>
     <div class="row g-3 mb-4">
         <div class="col-md-4">
             <div class="card card-custom p-3">
@@ -73,38 +72,39 @@
         </div>
     </div>
 
-    <!-- Section 2: Grafik Perbandingan Per Titik Ukur / Sub-Panel (AC2, AC3, LampG, Lamp1, dll) -->
-    <h5 class="fw-bold text-dark mb-3">⚡ 2. Perbandingan Per Titik Ukur / Sub-Panel (Fasa R-S-T)</h5>
+    <!-- Section 2: Grafik Perbandingan Per Titik Ukur Berdasarkan Waktu -->
+    <h5 class="fw-bold text-dark mb-3">⚡ 2. Perbandingan Per Titik Ukur (AC2, AC3, Lamp, dll) Antar Minggu</h5>
     <div class="row g-3 mb-4">
         <div class="col-md-4">
             <div class="card card-custom p-3">
-                <h6 class="fw-bold text-dark text-center">Daya Aktif per Titik Ukur (kW)</h6>
-                <div class="chart-container"><canvas id="chartPhaseP"></canvas></div>
+                <h6 class="fw-bold text-dark text-center">Rerata Daya Aktif P (kW) per Titik Ukur</h6>
+                <div class="chart-container"><canvas id="chartPointP"></canvas></div>
             </div>
         </div>
         <div class="col-md-4">
             <div class="card card-custom p-3">
-                <h6 class="fw-bold text-dark text-center">THD Arus per Titik Ukur (%)</h6>
-                <div class="chart-container"><canvas id="chartPhaseITHD"></canvas></div>
+                <h6 class="fw-bold text-dark text-center">Rerata THD Arus (%) per Titik Ukur</h6>
+                <div class="chart-container"><canvas id="chartPointITHD"></canvas></div>
             </div>
         </div>
         <div class="col-md-4">
             <div class="card card-custom p-3">
-                <h6 class="fw-bold text-dark text-center">Power Factor per Titik Ukur</h6>
-                <div class="chart-container"><canvas id="chartPhasePF"></canvas></div>
+                <h6 class="fw-bold text-dark text-center">Rerata Power Factor (PF) per Titik Ukur</h6>
+                <div class="chart-container"><canvas id="chartPointPF"></canvas></div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    /**
-     * PENGATURAN UTAMA:
-     * Cukup tambahkan file HTML mingguan baru ke dalam array ini.
-     */
     const measurementReports = [
         { file: 'panelwk2ags26.html', label: 'Wk 2 (11 Ags 2026)' },
         { file: 'panelwk4ags26.html', label: 'Wk 4 (24 Ags 2026)' }
+    ];
+
+    // Palet warna dinamis untuk membedakan tiap periode/minggu
+    const colorPalette = [
+        '#0d6efd', '#198754', '#ffc107', '#0dcaf0', '#6f42c1', '#d63384', '#fd7e14'
     ];
 
     function parseVal(val) {
@@ -124,13 +124,11 @@
         return -1;
     }
 
-    // Fungsi ekstraksi nama Titik Ukur dari nama file CSV (misal: "AC2.csv" -> "AC2")
     function extractPointName(csvFileName) {
         let clean = csvFileName.replace(/^data_panel\//, '');
         return clean.replace(/\.csv$/i, '');
     }
 
-    // Render Tombol Navigasi Link Laporan Mingguan
     document.getElementById('reportLinksContainer').innerHTML = measurementReports.map(r => `
         <div class="col-md-4 col-sm-6">
             <a href="${r.file}" target="_blank" class="btn btn-outline-primary w-100 text-start d-flex justify-content-between align-items-center rounded-3 p-2">
@@ -140,22 +138,21 @@
         </div>
     `).join('');
 
-    // Fungsi Utama Init Dashboard
     async function initDashboard() {
         const loadingOverlay = document.getElementById('loadingOverlay');
         const loadingDetailText = document.getElementById('loadingDetailText');
 
-        // Data Section 1 (Total per Periode Pengukuran)
-        const labelsTotal = [];
+        const periodLabels = [];
         const totalP_arr = [], avgITHD_arr = [], avgPF_arr = [];
 
-        // Data Section 2 (Per Titik Ukur / Sub-Panel)
-        const pointLabelsSet = new Set();
-        const pointDataMap = {}; // Format: { "AC2": { pR: 0, pS: 0, pT: 0, ... }, "Lamp1": ... }
+        const pointNamesSet = new Set();
+        // Structure matrix: pointDataMatrix[pointName][periodIndex] = { p: 0, ithd: 0, pf: 0 }
+        const pointDataMatrix = {};
 
         try {
-            for (const report of measurementReports) {
-                labelsTotal.push(report.label);
+            for (let reportIdx = 0; reportIdx < measurementReports.length; reportIdx++) {
+                const report = measurementReports[reportIdx];
+                periodLabels.push(report.label);
                 loadingDetailText.innerText = `Membaca laporan ${report.label}...`;
 
                 let resHtml;
@@ -163,7 +160,6 @@
                     resHtml = await fetch(report.file);
                     if (!resHtml.ok) throw new Error("File tidak ditemukan");
                 } catch (e) {
-                    console.warn(`Laporan ${report.file} tidak dapat diakses.`);
                     totalP_arr.push(0); avgITHD_arr.push(0); avgPF_arr.push(0);
                     continue;
                 }
@@ -172,7 +168,6 @@
                 const match = htmlText.match(/const\s+csvFiles\s*=\s*\[([\s\S]*?)\];/);
                 
                 if (!match) {
-                    console.warn("Array csvFiles tidak ditemukan di", report.file);
                     totalP_arr.push(0); avgITHD_arr.push(0); avgPF_arr.push(0);
                     continue;
                 }
@@ -187,19 +182,14 @@
 
                 for (let csvFile of csvFiles) {
                     let pointName = extractPointName(csvFile);
-                    pointLabelsSet.add(pointName);
+                    pointNamesSet.add(pointName);
 
-                    if (!pointDataMap[pointName]) {
-                        pointDataMap[pointName] = {
-                            count: 0,
-                            sumPR: 0, sumPS: 0, sumPT: 0,
-                            sumITHDR: 0, sumITHDS: 0, sumITHDT: 0,
-                            sumPFR: 0, sumPFS: 0, sumPFT: 0
-                        };
+                    if (!pointDataMatrix[pointName]) {
+                        pointDataMatrix[pointName] = {};
                     }
 
                     let cleanFileName = csvFile.replace(/^data_panel\//, '');
-                    loadingDetailText.innerText = `Memproses data CSV (${pointName})...`;
+                    loadingDetailText.innerText = `Memproses data ${pointName} (${report.label})...`;
 
                     try {
                         const resCsv = await fetch(`data_panel/${cleanFileName}`);
@@ -246,21 +236,19 @@
                             let avgP = fileP / rowCount;
                             if (avgP > 100) avgP /= 1000; // Watt ke kW
 
-                            let rR = avgP / 3, rS = avgP / 3, rT = avgP / 3;
-                            let aR = fileITHD_R / rowCount, aS = fileITHD_S / rowCount, aT = fileITHD_T / rowCount;
-                            let pRVal = filePF_R / rowCount, pSVal = filePF_S / rowCount, pTVal = filePF_T / rowCount;
+                            let avgITHD = (fileITHD_R + fileITHD_S + fileITHD_T) / (3 * rowCount);
+                            let avgPF = (filePF_R + filePF_S + filePF_T) / (3 * rowCount);
 
-                            // Akumulasi data Titik Ukur
-                            const pObj = pointDataMap[pointName];
-                            pObj.sumPR += rR; pObj.sumPS += rS; pObj.sumPT += rT;
-                            pObj.sumITHDR += aR; pObj.sumITHDS += aS; pObj.sumITHDT += aT;
-                            pObj.sumPFR += pRVal; pObj.sumPFS += pSVal; pObj.sumPFT += pTVal;
-                            pObj.count += 1;
+                            // Simpan Rerata Titik Ukur Pada Periode Ini
+                            pointDataMatrix[pointName][reportIdx] = {
+                                p: parseFloat(avgP.toFixed(2)),
+                                ithd: parseFloat(avgITHD.toFixed(1)),
+                                pf: parseFloat(avgPF.toFixed(3))
+                            };
 
-                            // Akumulasi Total Periode
                             periodSumP += avgP;
-                            periodSumITHD += (aR + aS + aT) / 3;
-                            periodSumPF += (pRVal + pSVal + pTVal) / 3;
+                            periodSumITHD += avgITHD;
+                            periodSumPF += avgPF;
                             validFileCount++;
                         }
                     } catch (errCsv) {
@@ -277,51 +265,39 @@
                 }
             }
 
-            // Memproses susunan data Per Titik Ukur untuk Chart.js
-            const pointLabels = Array.from(pointLabelsSet);
-            const pointPR = [], pointPS = [], pointPT = [];
-            const pointITHDR = [], pointITHDS = [], pointITHDT = [];
-            const pointPFR = [], pointPFS = [], pointPFT = [];
+            // Menyusun Dataset Chart.js: 1 Dataset = 1 Periode/Minggu Pengukuran
+            const pointList = Array.from(pointNamesSet);
 
-            pointLabels.forEach(pName => {
-                const item = pointDataMap[pName];
-                if (item && item.count > 0) {
-                    pointPR.push(parseFloat((item.sumPR / item.count).toFixed(2)));
-                    pointPS.push(parseFloat((item.sumPS / item.count).toFixed(2)));
-                    pointPT.push(parseFloat((item.sumPT / item.count).toFixed(2)));
+            const datasetsP = measurementReports.map((rep, repIdx) => ({
+                label: rep.label,
+                data: pointList.map(pName => (pointDataMatrix[pName] && pointDataMatrix[pName][repIdx]) ? pointDataMatrix[pName][repIdx].p : 0),
+                backgroundColor: colorPalette[repIdx % colorPalette.length]
+            }));
 
-                    pointITHDR.push(parseFloat((item.sumITHDR / item.count).toFixed(1)));
-                    pointITHDS.push(parseFloat((item.sumITHDS / item.count).toFixed(1)));
-                    pointITHDT.push(parseFloat((item.sumITHDT / item.count).toFixed(1)));
+            const datasetsITHD = measurementReports.map((rep, repIdx) => ({
+                label: rep.label,
+                data: pointList.map(pName => (pointDataMatrix[pName] && pointDataMatrix[pName][repIdx]) ? pointDataMatrix[pName][repIdx].ithd : 0),
+                backgroundColor: colorPalette[repIdx % colorPalette.length]
+            }));
 
-                    pointPFR.push(parseFloat((item.sumPFR / item.count).toFixed(3)));
-                    pointPFS.push(parseFloat((item.sumPFS / item.count).toFixed(3)));
-                    pointPFT.push(parseFloat((item.sumPFT / item.count).toFixed(3)));
-                } else {
-                    pointPR.push(0); pointPS.push(0); pointPT.push(0);
-                    pointITHDR.push(0); pointITHDS.push(0); pointITHDT.push(0);
-                    pointPFR.push(0); pointPFS.push(0); pointPFT.push(0);
-                }
-            });
+            const datasetsPF = measurementReports.map((rep, repIdx) => ({
+                label: rep.label,
+                data: pointList.map(pName => (pointDataMatrix[pName] && pointDataMatrix[pName][repIdx]) ? pointDataMatrix[pName][repIdx].pf : 0),
+                backgroundColor: colorPalette[repIdx % colorPalette.length]
+            }));
 
-            // Render semua grafik
             renderCharts({
-                labelsTotal, totalP_arr, avgITHD_arr, avgPF_arr,
-                pointLabels,
-                pointPR, pointPS, pointPT,
-                pointITHDR, pointITHDS, pointITHDT,
-                pointPFR, pointPFS, pointPFT
+                periodLabels, totalP_arr, avgITHD_arr, avgPF_arr,
+                pointList, datasetsP, datasetsITHD, datasetsPF
             });
 
         } catch (err) {
             console.error("Error pada dashboard:", err);
         } finally {
-            // Sembunyikan loading overlay setelah selesai
             loadingOverlay.style.display = 'none';
         }
     }
 
-    // Render Grafik Menggunakan Chart.js
     function renderCharts(d) {
         const createBar = (id, labels, datasets, yLabel, maxVal = null) => {
             let opts = {
@@ -338,21 +314,15 @@
             });
         };
 
-        // Section 1: Total Per Periode
-        createBar('chartTotalP', d.labelsTotal, [{ label: 'Total P (kW)', data: d.totalP_arr, backgroundColor: '#0d6efd' }], 'kW');
-        createBar('chartTotalITHD', d.labelsTotal, [{ label: 'Rerata THD Arus (%)', data: d.avgITHD_arr, backgroundColor: '#ffc107' }], '%');
-        createBar('chartTotalPF', d.labelsTotal, [{ label: 'Rerata PF', data: d.avgPF_arr, backgroundColor: '#198754' }], 'PF', 1.0);
+        // Section 1: Total Gedung (Sumbu X = Periode Pengukuran)
+        createBar('chartTotalP', d.periodLabels, [{ label: 'Total P (kW)', data: d.totalP_arr, backgroundColor: '#0d6efd' }], 'kW');
+        createBar('chartTotalITHD', d.periodLabels, [{ label: 'Rerata THD Arus (%)', data: d.avgITHD_arr, backgroundColor: '#ffc107' }], '%');
+        createBar('chartTotalPF', d.periodLabels, [{ label: 'Rerata PF', data: d.avgPF_arr, backgroundColor: '#198754' }], 'PF', 1.0);
 
-        // Section 2: Per Titik Ukur (Grouped Bar Chart per Titik Ukur R-S-T)
-        const phaseDatasets = (r, s, t) => [
-            { label: 'Fasa R', data: r, backgroundColor: '#dc3545' },
-            { label: 'Fasa S', data: s, backgroundColor: '#ffc107' },
-            { label: 'Fasa T', data: t, backgroundColor: '#0d6efd' }
-        ];
-
-        createBar('chartPhaseP', d.pointLabels, phaseDatasets(d.pointPR, d.pointPS, d.pointPT), 'kW');
-        createBar('chartPhaseITHD', d.pointLabels, phaseDatasets(d.pointITHDR, d.pointITHDS, d.pointITHDT), '%');
-        createBar('chartPhasePF', d.pointLabels, phaseDatasets(d.pointPFR, d.pointPFS, d.pointPFT), 'PF', 1.0);
+        // Section 2: Per Titik Ukur (Sumbu X = AC2, AC3, LampG, dll | Bar = Wk 2, Wk 4)
+        createBar('chartPointP', d.pointList, d.datasetsP, 'kW');
+        createBar('chartPointITHD', d.pointList, d.datasetsITHD, '%');
+        createBar('chartPointPF', d.pointList, d.datasetsPF, 'PF', 1.0);
     }
 
     window.onload = initDashboard;
