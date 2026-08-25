@@ -156,7 +156,7 @@
                 // 3. Loop dan fetch masing-masing file CSV
                 for (const csvFile of csvFiles) {
                     try {
-                        const resCsv = await fetch(csvFile);
+                        const resCsv = await fetch(`data_panel/${csvFile}`);
                         if (!resCsv.ok) continue;
                         const csvText = await resCsv.text();
 
