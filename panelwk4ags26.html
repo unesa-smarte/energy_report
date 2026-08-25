@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisis Kelistrikan 3-Phase AC-Lampu</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #ffffff; color: #212529; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .card-custom { background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; }
+        .text-heading { color: #0d6efd; }
+        .metric-value { font-size: 1.8rem; font-weight: 600; color: #212529; }
+        .table-custom { background-color: #ffffff; border-color: #dee2e6; font-size: 0.88rem; }
+        .table-custom th { background-color: #e9ecef; color: #212529; font-weight: 600; text-align: center; }
+        .table-custom td { text-align: center; vertical-align: middle; }
+        .badge-normal { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
+        .badge-warning { background-color: #fff3cd; color: #664d03; border: 1px solid #ffecb5; }
+    </style>
+    <!-- PapaParse Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+</head>
+<body class="py-4">
+
+<div class="container-fluid px-4">
+    <header class="pb-3 mb-4 border-bottom">
+        <h3 class="fw-bold text-heading">Dashboard Analisis Kelistrikan 3-Phase AC dan Lampu</h3>
+        <p class="text-muted mb-0">Laporan Rata-Rata Pengukuran di Panel Gedung Rektorat Unesa</p>
+    </header>
+
+    <!-- Ringkasan Atas (Overall Summary Cards) -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card card-custom p-3 border-start border-primary border-4">
+                <small class="text-muted text-uppercase fw-bold">Total Daya Aktif (P Sum)</small>
+                <div class="metric-value text-primary" id="total-p">- kW</div>
+                <small class="text-muted">Akumulasi Semua Beban</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-custom p-3 border-start border-info border-4">
+                <small class="text-muted text-uppercase fw-bold">Rerata Tegangan (V_LN)</small>
+                <div class="metric-value text-info" id="avg-v">- V</div>
+                <small class="text-muted">Tegangan Rerata Ke Netral</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-custom p-3 border-start border-success border-4">
+                <small class="text-muted text-uppercase fw-bold">Rerata Arus Total</small>
+                <div class="metric-value text-success" id="avg-i">- A</div>
+                <small class="text-muted">Beban Rerata per Fasa</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-custom p-3 border-start border-warning border-4">
+                <small class="text-muted text-uppercase fw-bold">Rerata Power Factor</small>
+                <div class="metric-value text-dark" id="avg-pf">-</div>
+                <small class="text-muted">Efisiensi Daya Total</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabel Rincian Vertikal per Fasa R-S-T -->
+    <div class="card card-custom p-3 mb-4">
+        <h5 class="fw-bold text-dark mb-3">Tabel Parameter Utama Per Fasa (R-S-T ke Netral)</h5>
+        <div class="table-responsive">
+            <table class="table table-bordered table-custom align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 14%;" class="text-start">Lokasi / File</th>
+                        <th style="width: 8%;">Fasa</th>
+                        <th style="width: 11%;">Tegangan (V)</th>
+                        <th style="width: 11%;">THD Tegangan (%)</th>
+                        <th style="width: 11%;">Arus Fasa (A)</th>
+                        <th style="width: 11%;">THD Arus (%)</th>
+                        <th style="width: 11%;">Daya Aktif P (kW)</th>
+                        <th style="width: 10%;">Power Factor</th>
+                        <th style="width: 13%;">Total & Status (PSum)</th>
+                    </tr>
+                </thead>
+                <tbody id="summaryTableBody">
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-4">Membaca file dari folder /data_panel/...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Catatan Penjelasan Kualitas Daya -->
+    <div class="alert alert-secondary mt-3 p-3 text-dark fs-7" role="alert">
+        <h6 class="fw-bold text-dark mb-2">📌 Catatan & Indikator Kualitas Daya:</h6>
+        <ul class="mb-0 ps-3">
+            <li><strong>Power Factor (PF):</strong> Indikator efisiensi daya. 
+                <span class="text-success fw-bold">PF ≥ 0.85 (Bagus/Normal)</span>, 
+                <span class="text-warning fw-bold bg-dark px-1">PF 0.70 - 0.84 (Kurang)</span>, 
+                <span class="text-danger fw-bold">PF &lt; 0.70 (Jelek / Kena Denda KVARh)</span>.
+            </li>
+            <li><strong>THD Tegangan (> 5% IEEE 519):</strong> Ditandai badge kuning <span class="badge badge-warning">V-THD > 5%</span>.</li>
+            <li><strong>THD Arus (> 10%):</strong> Ditandai badge kuning <span class="badge badge-warning">I-THD > 10%</span>.</li>
+            <li><strong>Beban Tidak Seimbang (> 15% NEMA):</strong> Ditandai badge merah <span class="badge bg-danger text-white">Beban Tidak Seimbang</span>.</li>
+        </ul>
+    </div>
+    
+    <div class="text-center my-4 pt-3 border-top">
+        <a href="https://drive.google.com/drive/folders/1opEJNSbBHHATIjS2sW2aUbXwG8cBc7rm" target="_blank" class="btn btn-outline-primary btn-sm px-4 rounded-pill">
+            Masuk ke gdrive foto hasil pengukuran
+        </a>
+    </div>
+
+</div>
+
+<script>
+    function parseValue(val) {
+        if (val === undefined || val === null || val === '') return 0;
+        let str = String(val).replace(',', '.').trim();
+        let parts = str.split('.');
+        if (parts.length > 2) str = parts[0] + '.' + parts[1];
+        let num = parseFloat(str);
+        return isNaN(num) ? 0 : Math.abs(num);
+    }
+
+    function findColumnIndex(headers, possibleNames) {
+        for (let name of possibleNames) {
+            let idx = headers.findIndex(h => h.trim().toUpperCase() === name.toUpperCase());
+            if (idx !== -1) return idx;
+        }
+        return -1;
+    }
+
+    // Helper untuk styling teks Power Factor berdasarkan nilai
+    function getPFTextStyle(pfValue) {
+        const val = parseFloat(pfValue);
+        if (val >= 0.85) {
+            return 'fw-bold text-success'; // Bagus (Hijau)
+        } else if (val >= 0.70) {
+            return 'fw-bold text-warning bg-dark px-1 rounded'; // Kurang (Kuning dengan background gelap agar terbaca jelas)
+        } else {
+            return 'fw-bold text-danger'; // Jelek (Merah)
+        }
+    }
+
+    const csvFiles = [
+        'LampG_20260824.csv', 'Lamp1_20260824.csv', 'Lamp2_20260824.csv',
+        'Lamp3_20260824.csv', 'Lamp4_20260824.csv', 'Lamp5_20260824.csv',
+        'Lamp6_20260824.csv', 'Lamp7_20260824.csv', 'Lamp8_20260824.csv',
+        'Lamp9_20260824.csv', 'Lamp10_20260824.csv', 'Lamp11_20260824.csv',
+        'Lamp12_20260824.csv', 'AC2_20260824.csv', 'AC3_20260824.csv',
+        'AC4_20260824.csv', 'AC5_20260824.csv', 'AC6_20260824.csv',
+        'AC7_20260824.csv', 'AC8_20260824.csv', 'AC9_20260824.csv',
+        'AC10_20260824.csv', 'AC11_20260824.csv', 'AC12_20260824.csv'
+    ];
+
+    const tableBody = document.getElementById("summaryTableBody");
+
+    async function loadAllCSVData() {
+        tableBody.innerHTML = "";
+        let grandP = 0, sumV = 0, sumI = 0, sumPF = 0, fileCount = 0;
+
+        for (const fileName of csvFiles) {
+            const filePath = `./data_panel/${fileName}`;
+            try {
+                const response = await fetch(filePath);
+                if (!response.ok) continue;
+
+                const csvText = await response.text();
+                const lines = csvText.split(/\r?\n/);
+                
+                let subHeaderIndex = lines.findIndex(line => line.includes('UA') && line.includes('UB'));
+                if (subHeaderIndex === -1) subHeaderIndex = 11;
+
+                const delimiter = lines[subHeaderIndex].includes(';') ? ';' : ',';
+                const headers = lines[subHeaderIndex].split(delimiter).map(h => h.trim());
+                const dataLines = lines.slice(subHeaderIndex + 1).join('\n');
+
+                Papa.parse(dataLines, {
+                    delimiter: delimiter,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        const rows = results.data;
+                        if (!rows || rows.length === 0) return;
+
+                        const idxUA = findColumnIndex(headers, ['UA', 'Ua', 'V1']);
+                        const idxUB = findColumnIndex(headers, ['UB', 'Ub', 'V2']);
+                        const idxUC = findColumnIndex(headers, ['UC', 'Uc', 'V3']);
+
+                        const idxTHDUA = findColumnIndex(headers, ['UA-THD', 'THDUA', 'THD_UA']);
+                        const idxTHDUB = findColumnIndex(headers, ['UB-THD', 'THDUB', 'THD_UB']);
+                        const idxTHDUC = findColumnIndex(headers, ['UC-THD', 'THDUC', 'THD_UC']);
+
+                        const idxIA = findColumnIndex(headers, ['IA', 'Ia', 'I1']);
+                        const idxIB = findColumnIndex(headers, ['IB', 'Ib', 'I2']);
+                        const idxIC = findColumnIndex(headers, ['IC', 'Ic', 'I3']);
+
+                        const idxTHDIA = findColumnIndex(headers, ['IA-THD', 'THDIA', 'THD_IA']);
+                        const idxTHDIB = findColumnIndex(headers, ['IB-THD', 'THDIB', 'THD_IB']);
+                        const idxTHDIC = findColumnIndex(headers, ['IC-THD', 'THDIC', 'THD_IC']);
+
+                        const idxPA = findColumnIndex(headers, ['PA', 'Pa', 'P1']);
+                        const idxPB = findColumnIndex(headers, ['PB', 'Pb', 'P2']);
+                        const idxPC = findColumnIndex(headers, ['PC', 'Pc', 'P3']);
+                        const idxPSum = findColumnIndex(headers, ['PSum', 'Psum', 'P_Sum', 'PTotal']);
+
+                        const idxPFA = findColumnIndex(headers, ['PFA', 'PFa', 'PF1']);
+                        const idxPFB = findColumnIndex(headers, ['PFB', 'PFb', 'PF2']);
+                        const idxPFC = findColumnIndex(headers, ['PFC', 'PFc', 'PF3']);
+
+                        let ur=0, us=0, ut=0;
+                        let vthdr=0, vthds=0, vthdt=0;
+                        let ir=0, is_=0, it=0;
+                        let ithdr=0, ithds=0, ithdt=0;
+                        let pr=0, ps=0, pt=0, psum=0;
+                        let pfr=0, pfs=0, pft=0;
+                        let count = 0;
+
+                        rows.forEach(row => {
+                            if (!row || row.length < 5) return;
+
+                            ur += parseValue(row[idxUA]);
+                            us += parseValue(row[idxUB]);
+                            ut += parseValue(row[idxUC]);
+
+                            vthdr += parseValue(row[idxTHDUA]);
+                            vthds += parseValue(row[idxTHDUB]);
+                            vthdt += parseValue(row[idxTHDUC]);
+
+                            ir += parseValue(row[idxIA]);
+                            is_ += parseValue(row[idxIB]);
+                            it += parseValue(row[idxIC]);
+
+                            ithdr += parseValue(row[idxTHDIA]);
+                            ithds += parseValue(row[idxTHDIB]);
+                            ithdt += parseValue(row[idxTHDIC]);
+
+                            pr += parseValue(row[idxPA]);
+                            ps += parseValue(row[idxPB]);
+                            pt += parseValue(row[idxPC]);
+                            psum += parseValue(row[idxPSum]);
+
+                            pfr += parseValue(row[idxPFA]);
+                            pfs += parseValue(row[idxPFB]);
+                            pft += parseValue(row[idxPFC]);
+
+                            count++;
+                        });
+
+                        if (count === 0) return;
+
+                        const vR = (ur / count).toFixed(1);
+                        const vS = (us / count).toFixed(1);
+                        const vT = (ut / count).toFixed(1);
+
+                        const vThdR = (vthdr / count).toFixed(2);
+                        const vThdS = (vthds / count).toFixed(2);
+                        const vThdT = (vthdt / count).toFixed(2);
+
+                        const iR = (ir / count).toFixed(1);
+                        const iS = (is_ / count).toFixed(1);
+                        const iT = (it / count).toFixed(1);
+
+                        const iThdR = (ithdr / count).toFixed(1);
+                        const iThdS = (ithds / count).toFixed(1);
+                        const iThdT = (ithdt / count).toFixed(1);
+
+                        let rawPR = pr / count;
+                        let rawPS = ps / count;
+                        let rawPT = pt / count;
+                        let rawPSum = psum / count;
+
+                        if (rawPSum > 100) {
+                            rawPR /= 1000;
+                            rawPS /= 1000;
+                            rawPT /= 1000;
+                            rawPSum /= 1000;
+                        }
+
+                        const pR = rawPR.toFixed(2);
+                        const pS = rawPS.toFixed(2);
+                        const pT = rawPT.toFixed(2);
+                        const pSumAvg = rawPSum.toFixed(2);
+
+                        const pfR = (pfr / count).toFixed(3);
+                        const pfS = (pfs / count).toFixed(3);
+                        const pfT = (pft / count).toFixed(3);
+
+                        const pfTotalCalculated = ((parseFloat(pfR) + parseFloat(pfS) + parseFloat(pfT)) / 3).toFixed(3);
+
+                        const avgLocationV = ((parseFloat(vR) + parseFloat(vS) + parseFloat(vT)) / 3).toFixed(1);
+                        const avgLocationI = ((parseFloat(iR) + parseFloat(iS) + parseFloat(iT)) / 3).toFixed(1);
+
+                        // Unbalance Arus (%)
+                        const numIR = parseFloat(iR);
+                        const numIS = parseFloat(iS);
+                        const numIT = parseFloat(iT);
+                        const numIAvg = parseFloat(avgLocationI);
+
+                        let iUnbalance = 0;
+                        if (numIAvg > 0) {
+                            const maxDevI = Math.max(
+                                Math.abs(numIR - numIAvg),
+                                Math.abs(numIS - numIAvg),
+                                Math.abs(numIT - numIAvg)
+                            );
+                            iUnbalance = ((maxDevI / numIAvg) * 100).toFixed(1);
+                        }
+
+                        // Penentuan Badge Status Kualitas Daya & PF
+                        let statusBadges = '';
+                        const pfTotNum = parseFloat(pfTotalCalculated);
+
+                        if (pfTotNum < 0.70) {
+                            statusBadges += '<span class="badge bg-danger text-white me-1">PF Sangat Buruk (&lt;0.70)</span>';
+                        } else if (pfTotNum < 0.85) {
+                            statusBadges += '<span class="badge badge-warning me-1">PF Kurang (&lt;0.85)</span>';
+                        }
+
+                        if (parseFloat(vThdR) > 5 || parseFloat(vThdS) > 5 || parseFloat(vThdT) > 5) {
+                            statusBadges += '<span class="badge badge-warning me-1">V-THD > 5%</span>';
+                        }
+                        if (parseFloat(iThdR) > 10 || parseFloat(iThdS) > 10 || parseFloat(iThdT) > 10) {
+                            statusBadges += '<span class="badge badge-warning me-1">I-THD > 10%</span>';
+                        }
+                        if (parseFloat(iUnbalance) > 15) {
+                            statusBadges += '<span class="badge bg-danger text-white me-1">Beban Tidak Seimbang</span>';
+                        }
+                        if (statusBadges === '') {
+                            statusBadges = '<span class="badge badge-normal">Normal</span>';
+                        }
+
+                        // Render Baris Tabel dengan Style PF yang Dinamis
+                        const rowsHTML = `
+                            <tr>
+                                <td rowspan="3" class="text-start fw-bold align-middle bg-light">
+                                    <div class="text-primary">${fileName}</div>
+                                    <small class="text-muted font-monospace">Avg: ${avgLocationV}V | ${avgLocationI}A</small>
+                                </td>
+                                <td class="fw-bold text-danger bg-light">Fasa R</td>
+                                <td>${vR} V</td>
+                                <td>${vThdR}%</td>
+                                <td>${iR} A</td>
+                                <td>${iThdR}%</td>
+                                <td>${pR} kW</td>
+                                <td><span class="${getPFTextStyle(pfR)}">${pfR}</span></td>
+                                <td rowspan="3" class="align-middle bg-light">
+                                    <div class="fw-bold text-dark fs-5">${pSumAvg} kW</div>
+                                    <small class="d-block mb-1">PF Total: <span class="${getPFTextStyle(pfTotalCalculated)}">${pfTotalCalculated}</span></small>
+                                    <small class="text-secondary d-block mb-2 font-monospace">Unbalance: ${iUnbalance}%</small>
+                                    <div>${statusBadges}</div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold text-warning bg-light">Fasa S</td>
+                                <td>${vS} V</td>
+                                <td>${vThdS}%</td>
+                                <td>${iS} A</td>
+                                <td>${iThdS}%</td>
+                                <td>${pS} kW</td>
+                                <td><span class="${getPFTextStyle(pfS)}">${pfS}</span></td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold text-primary bg-light">Fasa T</td>
+                                <td>${vT} V</td>
+                                <td>${vThdT}%</td>
+                                <td>${iT} A</td>
+                                <td>${iThdT}%</td>
+                                <td>${pT} kW</td>
+                                <td><span class="${getPFTextStyle(pfT)}">${pfT}</span></td>
+                            </tr>
+                        `;
+                        tableBody.innerHTML += rowsHTML;
+
+                        grandP += parseFloat(pSumAvg);
+                        sumV += parseFloat(avgLocationV);
+                        sumI += parseFloat(avgLocationI);
+                        sumPF += parseFloat(pfTotalCalculated);
+                        fileCount++;
+
+                        document.getElementById('total-p').innerText = grandP.toFixed(2) + " kW";
+                        document.getElementById('avg-v').innerText = (sumV / fileCount).toFixed(1) + " V";
+                        document.getElementById('avg-i').innerText = (sumI / fileCount).toFixed(1) + " A";
+                        document.getElementById('avg-pf').innerText = (sumPF / fileCount).toFixed(3);
+                    }
+                });
+            } catch (err) {
+                console.error("Gagal memuat file:", fileName, err);
+            }
+        }
+    }
+
+    window.onload = loadAllCSVData;
+</script>
+
+</body>
+</html>
