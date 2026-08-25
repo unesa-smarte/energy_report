@@ -102,14 +102,17 @@
 
     /**
      * Normalisasi Nama Titik Ukur:
-     * Mengubah nama file CSV (seperti "AC2.csv", "ac2_wk2.csv", "data_panel/LampG.CSV")
-     * menjadi identitas baku yang seragam (misal: "AC2", "LAMPG").
+     * Mengubah nama seperti "AC10_20260811.csv" dan "AC10_20260824.csv" menjadi "AC10"
      */
     function normalizePointName(csvFileName) {
         let clean = csvFileName.replace(/^data_panel\//i, '');
         clean = clean.replace(/\.csv$/i, '');
-        // Hapus suffix penanda minggu jika terbawa di nama file (misal: _wk2, _wk4, -wk2)
-        clean = clean.replace(/[_  -]?wk\d+/i, '');
+        
+        // Hapus suffix tanggal 8 digit (_YYYYMMDD) di akhir nama
+        clean = clean.replace(/[_  -]?\d{8}$/i, ''); 
+        // Hapus suffix penanda minggu jika ada (_wk2, _wk4)
+        clean = clean.replace(/[_  -]?wk\d+/i, ''); 
+
         return clean.trim().toUpperCase();
     }
 
@@ -252,7 +255,7 @@
             // 1. Render Section 1 (Total)
             renderTotalCharts(periodLabels, totalP_arr, avgITHD_arr, avgPF_arr);
 
-            // 2. Build & Render Section 2 (Gabungkan Titik Ukur Secara Otomatis)
+            // 2. Build & Render Section 2 (Dinamis Gabungan Per Titik)
             const pointList = Array.from(pointNamesSet).sort();
             renderPointSeriesCharts(pointList, periodLabels, pointDataMap);
 
@@ -300,7 +303,7 @@
         pointList.forEach((pointName) => {
             const safeId = pointName.replace(/[^a-zA-Z0-9]/g, '_');
             
-            // Ambil data per minggu untuk titik pengukuran ini
+            // Ambil data mingguan untuk titik pengukuran yang sudah digabung
             const pArr = [], ithdArr = [], pfArr = [];
             periodLabels.forEach((_, pIdx) => {
                 const item = pointDataMap[pointName] ? pointDataMap[pointName][pIdx] : null;
@@ -309,12 +312,12 @@
                 pfArr.push(item ? item.pf : 0);
             });
 
-            // Template Card per Titik Pengukuran Baku
+            // Template Card untuk Titik Ukur Gabungan (contoh: AC10)
             const cardHtml = `
                 <div class="card card-custom p-3 mb-4">
                     <div class="border-bottom pb-2 mb-3 d-flex align-items-center justify-content-between">
                         <h6 class="fw-bold text-dark m-0">📌 Titik Pengukuran: <span class="text-primary fs-5">${pointName}</span></h6>
-                        <span class="badge bg-light text-dark border">Tren Mingguan (${periodLabels.join(' vs ')})</span>
+                        <span class="badge bg-light text-dark border">Perbandingan Per Minggu</span>
                     </div>
                     <div class="row g-3">
                         <div class="col-md-4">
@@ -341,7 +344,7 @@
             
             container.insertAdjacentHTML('beforeend', cardHtml);
 
-            // Render 3 Chart dalam 1 Baris Card
+            // Render Chart dengan 2 batang (Wk 2 vs Wk 4) dalam 1 grafik
             setTimeout(() => {
                 createBarChart(`chart_P_${safeId}`, periodLabels, pArr, `Daya ${pointName}`, '#0d6efd', 'kW');
                 createBarChart(`chart_ITHD_${safeId}`, periodLabels, ithdArr, `THD ${pointName}`, '#ffc107', '%');
