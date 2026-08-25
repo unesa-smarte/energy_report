@@ -51,7 +51,7 @@
         </div>
     </div>
 
-    <!-- Section 2: Grafik Perbandingan Per Fasa (R, S, T) Total Keseluruhan -->
+    <!-- Section 2: Grafik Perbandingan Per Fasa (R, S, T) -->
     <h5 class="fw-bold text-dark mb-3">⚡ 2. Perbandingan Parameter per Fasa (R-S-T)</h5>
     <div class="row g-3 mb-4">
         <div class="col-md-4">
@@ -79,14 +79,11 @@
     /**
      * PENGATURAN UTAMA:
      * Cukup tambahkan file HTML mingguan baru ke dalam array ini.
-     * Script akan otomatis mengambil list file CSV di dalamnya dan menghitung seluruh grafik.
      */
     const measurementReports = [
         { file: 'panelwk2ags26.html', label: 'Wk 2 (11 Ags 2026)' },
         { file: 'panelwk4ags26.html', label: 'Wk 4 (24 Ags 2026)' }
     ];
-
-    let chartsInstance = {};
 
     function parseVal(val) {
         if (!val) return 0;
@@ -105,7 +102,7 @@
         return -1;
     }
 
-    // Render Tombol Navigasi Link
+    // Render Tombol Navigasi Link Laporan Mingguan
     document.getElementById('reportLinksContainer').innerHTML = measurementReports.map(r => `
         <div class="col-md-4 col-sm-6">
             <a href="${r.file}" target="_blank" class="btn btn-outline-primary w-100 text-start d-flex justify-content-between align-items-center rounded-3 p-2">
@@ -115,7 +112,7 @@
         </div>
     `).join('');
 
-    // Fungsi Utama Membaca HTML Mingguan & Parsing CSV-nya
+    // Fungsi Utama Init Dashboard
     async function initDashboard() {
         const labels = [];
         const totalP_arr = [], avgITHD_arr = [], avgPF_arr = [];
@@ -131,10 +128,10 @@
             try {
                 // 1. Fetch file HTML mingguan
                 const resHtml = await fetch(report.file);
-                if (!resHtml.ok) throw new Error("Gagal memuat " + report.file);
+                if (!resHtml.ok) throw new Error("Gagal memuat file " + report.file);
                 const htmlText = await resHtml.text();
 
-                // 2. Ekstrak array const csvFiles = [...] menggunakan regex
+                // 2. Ekstrak array const csvFiles = [...]
                 const match = htmlText.match(/const\s+csvFiles\s*=\s*\[([\s\S]*?)\];/);
                 if (!match) {
                     console.warn("Array csvFiles tidak ditemukan di", report.file);
@@ -153,10 +150,13 @@
                 let sumPFR = 0, sumPFS = 0, sumPFT = 0;
                 let validFileCount = 0;
 
-                // 3. Loop dan fetch masing-masing file CSV
-                for (const csvFile of csvFiles) {
+                // 3. Loop dan fetch masing-masing CSV dari subfolder data_panel/
+                for (let csvFile of csvFiles) {
                     try {
-                        const resCsv = await fetch(`data_panel/${csvFile}`);
+                        // Hilangkan prefix data_panel/ jika di file HTML mingguan sudah pernah dituliskan
+                        let cleanFileName = csvFile.replace(/^data_panel\//, '');
+                        const resCsv = await fetch(`data_panel/${cleanFileName}`);
+                        
                         if (!resCsv.ok) continue;
                         const csvText = await resCsv.text();
 
@@ -200,7 +200,7 @@
                             let avgP = fileP / rowCount;
                             if (avgP > 100) avgP /= 1000; // Konversi ke kW jika masih Watt
 
-                            let rR = avgP / 3, rS = avgP / 3, rT = avgP / 3; // Estimasi pembagian fasa seimbang jika total Psum per record
+                            let rR = avgP / 3, rS = avgP / 3, rT = avgP / 3;
                             sumPR += rR; sumPS += rS; sumPT += rT;
                             sumP += avgP;
 
@@ -230,7 +230,7 @@
 
                     ithdR.push(parseFloat((sumITHDR / validFileCount).toFixed(1)));
                     ithdS.push(parseFloat((sumITHDS / validFileCount).toFixed(1)));
-                    ithdt.push ? ithdt.push(parseFloat((sumITHDT / validFileCount).toFixed(1))) : ithdT.push(parseFloat((sumITHDT / validFileCount).toFixed(1)));
+                    ithdT.push(parseFloat((sumITHDT / validFileCount).toFixed(1)));
 
                     pfR.push(parseFloat((sumPFR / validFileCount).toFixed(3)));
                     pfS.push(parseFloat((sumPFS / validFileCount).toFixed(3)));
