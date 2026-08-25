@@ -11,7 +11,7 @@
         body { background-color: #f4f6f9; color: #212529; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         .card-custom { background-color: #ffffff; border: 1px solid #dee2e6; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
         .text-heading { color: #0d6efd; }
-        .chart-container { position: relative; height: 340px; width: 100%; }
+        .chart-container { position: relative; height: 260px; width: 100%; }
         
         #loadingOverlay {
             position: fixed;
@@ -28,7 +28,7 @@
 </head>
 <body class="py-4">
 
-<!-- Loading Indicator -->
+<!-- Loading Overlay -->
 <div id="loadingOverlay">
     <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
         <span class="visually-hidden">Loading...</span>
@@ -49,9 +49,9 @@
         <div class="row g-2" id="reportLinksContainer"></div>
     </div>
 
-    <!-- Section 1: Grafik Total Gedung Antar Periode -->
-    <h5 class="fw-bold text-dark mb-3">📊 1. Ringkasan Total Sistem Antar Periode Pengukuran</h5>
-    <div class="row g-3 mb-4">
+    <!-- Section 1: Grafik Ringkasan Total Sistem -->
+    <h5 class="fw-bold text-dark mb-3">📊 1. Ringkasan Total Sistem (Keseluruhan Panel)</h5>
+    <div class="row g-3 mb-5">
         <div class="col-md-4">
             <div class="card card-custom p-3">
                 <h6 class="fw-bold text-primary text-center">Total Daya Aktif P (kW)</h6>
@@ -72,39 +72,15 @@
         </div>
     </div>
 
-    <!-- Section 2: Grafik Perbandingan Per Titik Ukur Berdasarkan Waktu -->
-    <h5 class="fw-bold text-dark mb-3">⚡ 2. Perbandingan Per Titik Ukur (AC2, AC3, Lamp, dll) Antar Minggu</h5>
-    <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <div class="card card-custom p-3">
-                <h6 class="fw-bold text-dark text-center">Rerata Daya Aktif P (kW) per Titik Ukur</h6>
-                <div class="chart-container"><canvas id="chartPointP"></canvas></div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card card-custom p-3">
-                <h6 class="fw-bold text-dark text-center">Rerata THD Arus (%) per Titik Ukur</h6>
-                <div class="chart-container"><canvas id="chartPointITHD"></canvas></div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card card-custom p-3">
-                <h6 class="fw-bold text-dark text-center">Rerata Power Factor (PF) per Titik Ukur</h6>
-                <div class="chart-container"><canvas id="chartPointPF"></canvas></div>
-            </div>
-        </div>
-    </div>
+    <!-- Section 2: Container Seri Grafik Individual Per Titik Ukur (Auto-Generated) -->
+    <h5 class="fw-bold text-dark mb-3">⚡ 2. Perbandingan Tren Mingguan Per Titik Ukur</h5>
+    <div id="pointsChartsContainer"></div>
 </div>
 
 <script>
     const measurementReports = [
         { file: 'panelwk2ags26.html', label: 'Wk 2 (11 Ags 2026)' },
         { file: 'panelwk4ags26.html', label: 'Wk 4 (24 Ags 2026)' }
-    ];
-
-    // Palet warna dinamis untuk membedakan tiap periode/minggu
-    const colorPalette = [
-        '#0d6efd', '#198754', '#ffc107', '#0dcaf0', '#6f42c1', '#d63384', '#fd7e14'
     ];
 
     function parseVal(val) {
@@ -129,6 +105,7 @@
         return clean.replace(/\.csv$/i, '');
     }
 
+    // Render Link Laporan
     document.getElementById('reportLinksContainer').innerHTML = measurementReports.map(r => `
         <div class="col-md-4 col-sm-6">
             <a href="${r.file}" target="_blank" class="btn btn-outline-primary w-100 text-start d-flex justify-content-between align-items-center rounded-3 p-2">
@@ -146,8 +123,8 @@
         const totalP_arr = [], avgITHD_arr = [], avgPF_arr = [];
 
         const pointNamesSet = new Set();
-        // Structure matrix: pointDataMatrix[pointName][periodIndex] = { p: 0, ithd: 0, pf: 0 }
-        const pointDataMatrix = {};
+        // Matrix: pointDataMap[pointName][periodIndex] = { p, ithd, pf }
+        const pointDataMap = {};
 
         try {
             for (let reportIdx = 0; reportIdx < measurementReports.length; reportIdx++) {
@@ -184,12 +161,12 @@
                     let pointName = extractPointName(csvFile);
                     pointNamesSet.add(pointName);
 
-                    if (!pointDataMatrix[pointName]) {
-                        pointDataMatrix[pointName] = {};
+                    if (!pointDataMap[pointName]) {
+                        pointDataMap[pointName] = {};
                     }
 
                     let cleanFileName = csvFile.replace(/^data_panel\//, '');
-                    loadingDetailText.innerText = `Memproses data ${pointName} (${report.label})...`;
+                    loadingDetailText.innerText = `Memproses ${pointName} (${report.label})...`;
 
                     try {
                         const resCsv = await fetch(`data_panel/${cleanFileName}`);
@@ -239,8 +216,7 @@
                             let avgITHD = (fileITHD_R + fileITHD_S + fileITHD_T) / (3 * rowCount);
                             let avgPF = (filePF_R + filePF_S + filePF_T) / (3 * rowCount);
 
-                            // Simpan Rerata Titik Ukur Pada Periode Ini
-                            pointDataMatrix[pointName][reportIdx] = {
+                            pointDataMap[pointName][reportIdx] = {
                                 p: parseFloat(avgP.toFixed(2)),
                                 ithd: parseFloat(avgITHD.toFixed(1)),
                                 pf: parseFloat(avgPF.toFixed(3))
@@ -265,31 +241,12 @@
                 }
             }
 
-            // Menyusun Dataset Chart.js: 1 Dataset = 1 Periode/Minggu Pengukuran
+            // 1. Render Section 1 (Total)
+            renderTotalCharts(periodLabels, totalP_arr, avgITHD_arr, avgPF_arr);
+
+            // 2. Build & Render Section 2 (Dinamis per Titik Ukur)
             const pointList = Array.from(pointNamesSet);
-
-            const datasetsP = measurementReports.map((rep, repIdx) => ({
-                label: rep.label,
-                data: pointList.map(pName => (pointDataMatrix[pName] && pointDataMatrix[pName][repIdx]) ? pointDataMatrix[pName][repIdx].p : 0),
-                backgroundColor: colorPalette[repIdx % colorPalette.length]
-            }));
-
-            const datasetsITHD = measurementReports.map((rep, repIdx) => ({
-                label: rep.label,
-                data: pointList.map(pName => (pointDataMatrix[pName] && pointDataMatrix[pName][repIdx]) ? pointDataMatrix[pName][repIdx].ithd : 0),
-                backgroundColor: colorPalette[repIdx % colorPalette.length]
-            }));
-
-            const datasetsPF = measurementReports.map((rep, repIdx) => ({
-                label: rep.label,
-                data: pointList.map(pName => (pointDataMatrix[pName] && pointDataMatrix[pName][repIdx]) ? pointDataMatrix[pName][repIdx].pf : 0),
-                backgroundColor: colorPalette[repIdx % colorPalette.length]
-            }));
-
-            renderCharts({
-                periodLabels, totalP_arr, avgITHD_arr, avgPF_arr,
-                pointList, datasetsP, datasetsITHD, datasetsPF
-            });
+            renderPointSeriesCharts(pointList, periodLabels, pointDataMap);
 
         } catch (err) {
             console.error("Error pada dashboard:", err);
@@ -298,31 +255,91 @@
         }
     }
 
-    function renderCharts(d) {
-        const createBar = (id, labels, datasets, yLabel, maxVal = null) => {
-            let opts = {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: { y: { beginAtZero: true, title: { display: true, text: yLabel } } }
-            };
-            if (maxVal !== null) opts.scales.y.max = maxVal;
-
-            new Chart(document.getElementById(id), {
-                type: 'bar',
-                data: { labels: labels, datasets: datasets },
-                options: opts
-            });
+    function createBarChart(canvasId, labels, data, labelName, color, yLabel, maxVal = null) {
+        let opts = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, title: { display: true, text: yLabel } } }
         };
+        if (maxVal !== null) opts.scales.y.max = maxVal;
 
-        // Section 1: Total Gedung (Sumbu X = Periode Pengukuran)
-        createBar('chartTotalP', d.periodLabels, [{ label: 'Total P (kW)', data: d.totalP_arr, backgroundColor: '#0d6efd' }], 'kW');
-        createBar('chartTotalITHD', d.periodLabels, [{ label: 'Rerata THD Arus (%)', data: d.avgITHD_arr, backgroundColor: '#ffc107' }], '%');
-        createBar('chartTotalPF', d.periodLabels, [{ label: 'Rerata PF', data: d.avgPF_arr, backgroundColor: '#198754' }], 'PF', 1.0);
+        new Chart(document.getElementById(canvasId), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: labelName,
+                    data: data,
+                    backgroundColor: color,
+                    borderRadius: 4
+                }]
+            },
+            options: opts
+        });
+    }
 
-        // Section 2: Per Titik Ukur (Sumbu X = AC2, AC3, LampG, dll | Bar = Wk 2, Wk 4)
-        createBar('chartPointP', d.pointList, d.datasetsP, 'kW');
-        createBar('chartPointITHD', d.pointList, d.datasetsITHD, '%');
-        createBar('chartPointPF', d.pointList, d.datasetsPF, 'PF', 1.0);
+    function renderTotalCharts(periodLabels, totalP, avgITHD, avgPF) {
+        createBarChart('chartTotalP', periodLabels, totalP, 'Total P', '#0d6efd', 'kW');
+        createBarChart('chartTotalITHD', periodLabels, avgITHD, 'THD Arus', '#ffc107', '%');
+        createBarChart('chartTotalPF', periodLabels, avgPF, 'Power Factor', '#198754', 'PF', 1.0);
+    }
+
+    function renderPointSeriesCharts(pointList, periodLabels, pointDataMap) {
+        const container = document.getElementById('pointsChartsContainer');
+        container.innerHTML = '';
+
+        pointList.forEach((pointName, idx) => {
+            const safeId = pointName.replace(/[^a-zA-Z0-9]/g, '_');
+            
+            // Susun array data mingguan untuk titik ini
+            const pArr = [], ithdArr = [], pfArr = [];
+            periodLabels.forEach((_, pIdx) => {
+                const item = pointDataMap[pointName] ? pointDataMap[pointName][pIdx] : null;
+                pArr.push(item ? item.p : 0);
+                ithdArr.push(item ? item.ithd : 0);
+                pfArr.push(item ? item.pf : 0);
+            });
+
+            // Template HTML per Titik Ukur
+            const cardHtml = `
+                <div class="card card-custom p-3 mb-4">
+                    <div class="border-bottom pb-2 mb-3 d-flex align-items-center justify-content-between">
+                        <h6 class="fw-bold text-dark m-0">📌 Titik Pengukuran: <span class="text-primary fs-5">${pointName}</span></h6>
+                        <span class="badge bg-light text-dark border">Perbandingan Tren Mingguan</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="p-2 border rounded bg-light">
+                                <small class="fw-bold d-block text-center text-primary mb-2">Daya Aktif P (kW)</small>
+                                <div class="chart-container"><canvas id="chart_P_${safeId}"></canvas></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-2 border rounded bg-light">
+                                <small class="fw-bold d-block text-center text-warning mb-2">THD Arus (%)</small>
+                                <div class="chart-container"><canvas id="chart_ITHD_${safeId}"></canvas></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-2 border rounded bg-light">
+                                <small class="fw-bold d-block text-center text-success mb-2">Power Factor (PF)</small>
+                                <div class="chart-container"><canvas id="chart_PF_${safeId}"></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', cardHtml);
+
+            // Render Chart per Card
+            setTimeout(() => {
+                createBarChart(`chart_P_${safeId}`, periodLabels, pArr, `Daya ${pointName}`, '#0d6efd', 'kW');
+                createBarChart(`chart_ITHD_${safeId}`, periodLabels, ithdArr, `THD ${pointName}`, '#ffc107', '%');
+                createBarChart(`chart_PF_${safeId}`, periodLabels, pfArr, `PF ${pointName}`, '#198754', 'PF', 1.0);
+            }, 50);
+        });
     }
 
     window.onload = initDashboard;
