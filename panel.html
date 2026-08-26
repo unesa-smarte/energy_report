@@ -72,7 +72,7 @@
         </div>
     </div>
 
-    <!-- Section 2: Container Seri Grafik Individual Per Titik Ukur (Auto-Grouped) -->
+    <!-- Section 2: Container Seri Grafik Individual Per Titik Ukur (Auto-Grouped & Sorted) -->
     <h5 class="fw-bold text-dark mb-3">⚡ 2. Perbandingan Tren Mingguan Per Titik Pengukuran</h5>
     <div id="pointsChartsContainer"></div>
 </div>
@@ -100,10 +100,6 @@
         return -1;
     }
 
-    /**
-     * Normalisasi Nama Titik Ukur:
-     * Mengubah nama seperti "AC10_20260811.csv" dan "AC10_20260824.csv" menjadi "AC10"
-     */
     function normalizePointName(csvFileName) {
         let clean = csvFileName.replace(/^data_panel\//i, '');
         clean = clean.replace(/\.csv$/i, '');
@@ -134,7 +130,6 @@
         const totalP_arr = [], avgITHD_arr = [], avgPF_arr = [];
 
         const pointNamesSet = new Set();
-        // Matrix: pointDataMap[NORMALIZED_NAME][periodIndex] = { p, ithd, pf }
         const pointDataMap = {};
 
         try {
@@ -222,7 +217,7 @@
 
                         if (rowCount > 0) {
                             let avgP = fileP / rowCount;
-                            if (avgP > 100) avgP /= 1000; // Watt ke kW
+                            if (avgP > 100) avgP /= 1000;
 
                             let avgITHD = (fileITHD_R + fileITHD_S + fileITHD_T) / (3 * rowCount);
                             let avgPF = (filePF_R + filePF_S + filePF_T) / (3 * rowCount);
@@ -255,8 +250,12 @@
             // 1. Render Section 1 (Total)
             renderTotalCharts(periodLabels, totalP_arr, avgITHD_arr, avgPF_arr);
 
-            // 2. Build & Render Section 2 (Dinamis Gabungan Per Titik)
-            const pointList = Array.from(pointNamesSet).sort();
+            // 2. Sort Alami (Natural Numeric Order): LAMP1, LAMP2, ..., LAMP10, LAMP11
+            const pointList = Array.from(pointNamesSet).sort((a, b) => 
+                a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+            );
+
+            // Render Section 2
             renderPointSeriesCharts(pointList, periodLabels, pointDataMap);
 
         } catch (err) {
@@ -303,7 +302,6 @@
         pointList.forEach((pointName) => {
             const safeId = pointName.replace(/[^a-zA-Z0-9]/g, '_');
             
-            // Ambil data mingguan untuk titik pengukuran yang sudah digabung
             const pArr = [], ithdArr = [], pfArr = [];
             periodLabels.forEach((_, pIdx) => {
                 const item = pointDataMap[pointName] ? pointDataMap[pointName][pIdx] : null;
@@ -312,7 +310,6 @@
                 pfArr.push(item ? item.pf : 0);
             });
 
-            // Template Card untuk Titik Ukur Gabungan (contoh: AC10)
             const cardHtml = `
                 <div class="card card-custom p-3 mb-4">
                     <div class="border-bottom pb-2 mb-3 d-flex align-items-center justify-content-between">
@@ -344,7 +341,6 @@
             
             container.insertAdjacentHTML('beforeend', cardHtml);
 
-            // Render Chart dengan 2 batang (Wk 2 vs Wk 4) dalam 1 grafik
             setTimeout(() => {
                 createBarChart(`chart_P_${safeId}`, periodLabels, pArr, `Daya ${pointName}`, '#0d6efd', 'kW');
                 createBarChart(`chart_ITHD_${safeId}`, periodLabels, ithdArr, `THD ${pointName}`, '#ffc107', '%');
