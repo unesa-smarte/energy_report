@@ -48,10 +48,6 @@
           <input type="date" id="endDate" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
-          <input type="text" id="apiKey" value="monacolisa_energy_api_2026" placeholder="Masukkan API Key" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
-        </div>
-        <div>
           <button id="btnFetch" onclick="loadAllData()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
             Tampilkan Data
           </button>
@@ -174,6 +170,7 @@
 
     // Mengambil dan memproses data dari API
     async function loadAllData() {
+      const apiKey = "monacolisa_energy_api_2026";
       const start = document.getElementById('startDate').value;
       const end = document.getElementById('endDate').value;
       const apiKey = document.getElementById('apiKey').value;
