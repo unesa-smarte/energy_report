@@ -188,7 +188,7 @@
 
       // URL Endpoint API
       const targetUrl = `https://monacolisa.fulindo.co.id/api/energy?api_key=${apiKey}&device_imei=860987054243453&tanggal=${start}&page=1&limit=${limit}`;
-      const apiUrl = `https://corsproxy.io/?` + encodeURIComponent(targetUrl);
+      const apiUrl = `https://proxy.corsfix.com/?` + encodeURIComponent(targetUrl);
       try {
         const res = await fetch(apiUrl);
         const json = await res.reverse ? await res.json() : await res.json();
