@@ -8,6 +8,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Load Corsfix Library dari CDN -->
+  <script src="https://unpkg.com/corsfix"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 md:p-8">
 
@@ -187,11 +189,11 @@
       btn.disabled = true;
 
       // URL Endpoint API
-      const targetUrl = `https://monacolisa.fulindo.co.id/api/energy?api_key=${apiKey}&device_imei=860987054243453&tanggal=${start}&page=1&limit=${limit}`;
-      const apiUrl = `https://proxy.corsfix.com/?` + targetUrl;
+      const apiUrl = `https://monacolisa.fulindo.co.id/api/energy?api_key=${apiKey}&device_imei=860987054243453&tanggal=${start}&page=1&limit=${limit}`;
+      
       try {
-        const res = await fetch(apiUrl);
-        const json = await res.reverse ? await res.json() : await res.json();
+        const res = await corsfix.fetch(apiUrl);
+        const json = await res.json();
         
         if (json.status === "success" && json.data) {
           // 1. Set IMEI
