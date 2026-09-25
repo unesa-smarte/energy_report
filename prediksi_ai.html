@@ -215,7 +215,7 @@ async function panggilGitHubModelsAPI(modelName, token, dataRiil) {
     else if (modelName === "gpt-4-1") endpointModelId = "gpt-4.1";
     else if (modelName === "Llama-3.3") endpointModelId = "Llama-3.3-70B-Instruct";
 
-    const apiUrl = "https://models.inference.ai.azure.com/chat/completions";
+    const apiUrl = "https://models.inference.ai.azure.com";
     
     const systemPrompt = `Anda adalah sistem data scientist spesialis energi listrik gedung universitas. 
 Tugas Anda: Menganalisis tren data historis dan perulangan musiman (seasonality) tahunan. 
