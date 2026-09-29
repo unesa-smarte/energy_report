@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Laporan Telemetri Power Meter Depo Sampah Unesa Lidah Wetan</title>
+  <title>Laporan Telemetri Power Meter</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Load Corsfix Library dari CDN -->
+  <!-- Corsfix CDN -->
   <script src="https://unpkg.com/corsfix"></script>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-4 md:p-8">
@@ -18,12 +18,12 @@
     <!-- Header Section -->
     <div class="bg-white p-6 rounded-xl shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
       <div class="flex items-center gap-4 w-full md:w-auto">
-        <!-- Placeholder Logo (dapat diganti src-nya) -->
-        <img id="siteLogo" src="logo.png" alt="Logo Unesa" class="h-16 w-16 object-contain rounded-md border p-1">
-          <div class="w-full md:w-auto min-w-[300px]">
+        <!-- Placeholder Logo -->
+        <img id="siteLogo" src="https://via.placeholder.com/80?text=LOGO" alt="Logo" class="h-16 w-16 object-contain rounded-md border p-1">
+        <div class="w-full md:w-auto min-w-[300px]">
           <!-- Nama Lokasi Statis -->
           <h1 class="text-2xl font-bold text-gray-800 tracking-wide block">
-            Depo Sampah Kampus Unesa Lidah Wetan
+            Unesa Depo Sampah Lidah Wetan
           </h1>
           <p class="text-sm text-gray-500 mt-1">Monitoring System Power Meter 3-Phase</p>
         </div>
@@ -36,9 +36,9 @@
       </div>
     </div>
 
-    <!-- Filter & Control Section -->
+    <!-- Filter & Control Section (API Key dihapus dari UI) -->
     <div class="bg-white p-6 rounded-xl shadow-md space-y-4">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
           <input type="date" id="startDate" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
@@ -49,7 +49,7 @@
         </div>
         <div>
           <button id="btnFetch" onclick="loadAllData()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200">
-            Tampilkan Data
+            Tampilkan Data & Analisis AI
           </button>
         </div>
       </div>
@@ -59,7 +59,7 @@
       </div>
     </div>
 
-    <!-- Charts Container (Sesuai Urutan) -->
+    <!-- Charts Container -->
     <div class="grid grid-cols-1 gap-6">
       
       <!-- 1. Tegangan (Phase A, B, C) -->
@@ -106,24 +106,41 @@
 
     </div>
 
+    <!-- AI Analysis Section -->
+    <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 rounded-xl shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+        <div class="flex items-center gap-2">
+          <!-- Icon AI Generator -->
+          <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+          <h3 class="text-lg font-bold">Analisis Kehandalan Kelistrikan (AI Gemini)</h3>
+        </div>
+        <span id="aiStatus" class="text-xs bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full border border-blue-500/30">Menunggu data...</span>
+      </div>
+      
+      <div id="aiContent" class="text-slate-300 text-sm leading-relaxed space-y-2 min-h-[100px]">
+        Silakan klik tombol "Tampilkan Data & Analisis AI" untuk memuat grafik dan menghasilkan laporan analisis kelistrikan otomatis berdasarkan standar IEEE 519 dan IEC 61000.
+      </div>
+    </div>
+
   </div>
 
   <script>
-    // Objek penyimpan instance grafik Chart.js
+    // --- KONFIGURASI API KEY (LANGSUNG DI SINI) ---
+    const APP_API_KEY = "monacolisa_energy_api_2026"; 
+    const GEMINI_API_KEY = "AQ.Ab8RN6IKzkNR_MY8C7WPElH-KPIaHIoJBQdbLrqEWh1s_SbTdw";
+    // ---------------------------------------------
+
     const charts = {};
 
-    // Inisialisasi tanggal bawaan ke hari ini
     const todayStr = new Date().toISOString().split('T')[0];
     document.getElementById('startDate').value = todayStr;
     document.getElementById('endDate').value = todayStr;
 
-    // Skema Warna Fasa (Phase A: Red, Phase B: Yellow/Amber, Phase C: Blue)
-    const COLOR_A = 'rgb(239, 68, 68)';   // Merah
-    const COLOR_B = 'rgb(245, 158, 11)';  // Kuning
-    const COLOR_C = 'rgb(59, 130, 246)';  // Biru
-    const COLOR_TOT = 'rgb(16, 185, 129)';// Hijau
+    const COLOR_A = 'rgb(239, 68, 68)';   
+    const COLOR_B = 'rgb(245, 158, 11)';  
+    const COLOR_C = 'rgb(59, 130, 246)';  
+    const COLOR_TOT = 'rgb(16, 185, 129)';
 
-    // Fungsi membuat / memperbarui grafik standar
     function createOrUpdateChart(canvasId, labels, datasets) {
       if (charts[canvasId]) {
         charts[canvasId].data.labels = labels;
@@ -148,7 +165,6 @@
       }
     }
 
-    // Mengubah string "YYYYMMDDHHmmss" menjadi format tampilan waktu "HH:mm (DD/MM)"
     function formatTimestamp(tsStr) {
       if (!tsStr || tsStr.length < 12) return tsStr;
       const yr = tsStr.substring(0, 4);
@@ -159,18 +175,69 @@
       return `${hr}:${mi} (${dy}/${mo})`;
     }
 
-    // Menghitung selisih hari & menentukan limit data API
     function calculateLimit(start, end) {
       const d1 = new Date(start);
       const d2 = new Date(end);
       const diffTime = Math.abs(d2 - d1);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Sertakan hari terakhir
-      return diffDays * 96; // 96 data per hari (interval 15 menit)
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      return diffDays * 96; 
     }
 
-    // Mengambil dan memproses data dari API
+    // Fungsi untuk memanggil Google Gemini API
+    async function generateAIAnalysis(summaryDataJson) {
+      const aiStatus = document.getElementById('aiStatus');
+      const aiContent = document.getElementById('aiContent');
+
+      aiStatus.innerText = "Sedang Menganalisis...";
+      aiStatus.className = "text-xs bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full border border-yellow-500/30";
+      aiContent.innerHTML = `<span class="animate-pulse text-slate-400">AI sedang memproses data telemetri berdasarkan standar IEEE 519 & IEC 61000...</span>`;
+
+      // Menggunakan model gemini-2.5-flash yang cepat dan efisien
+      const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+      const promptText = `
+Anda adalah seorang Ahli Sistem Tenaga Listrik dan Power Quality Engineer. 
+Berikut adalah ringkasan data telemetri power meter 3-fase dalam format JSON:
+${JSON.stringify(summaryDataJson)}
+
+Tolong buatkan laporan analisis kehandalan dan kualitas daya listrik secara profesional dalam Bahasa Indonesia, dengan struktur berikut:
+1. **Ringkasan Kondisi Umum Sistem**: Evaluasi umum beban dan performa tegangan/arus.
+2. **Kepatuhan Standar IEEE 519 (Harmonisa & Distorsi)**: Analisis nilai THD Tegangan (THDV) dan THD Arus (THDI) terhadap batas yang diizinkan standar IEEE 519 (misalnya THD Tegangan umumnya < 5%).
+3. **Kepatuhan Standar IEC 61000 (Kualitas Daya & Faktor Daya)**: Evaluasi kestabilan tegangan antar fasa, unbalance, serta nilai Power Factor (PF) terhadap standar IEC 61000 (ideal PF > 0.85 - 0.95).
+4. **Rekomendasi Teknis**: Saran perbaikan operasional jika ditemukan anomali atau potensi kerugian daya.
+
+Gunakan format teks rapi dengan poin-poin yang jelas dan mudah dibaca.
+      `;
+
+      try {
+        const response = await fetch(geminiEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: promptText }] }]
+          })
+        });
+
+        const result = await response.json();
+        
+        if (result.candidates && result.candidates[0].content.parts[0].text) {
+          const aiText = result.candidates[0].content.parts[0].text;
+          // Ubah baris baru teks markdown sederhana menjadi HTML line breaks
+          aiContent.innerHTML = aiText.replace(/\n/g, '<br>');
+          aiStatus.innerText = "Analisis Selesai";
+          aiStatus.className = "text-xs bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full border border-emerald-500/30";
+        } else {
+          throw new Error("Format respons Gemini tidak valid.");
+        }
+      } catch (err) {
+        console.error("AI Error:", err);
+        aiContent.innerText = "Gagal memuat analisis AI. Pastikan Gemini API Key valid.";
+        aiStatus.innerText = "Gagal";
+        aiStatus.className = "text-xs bg-red-500/20 text-red-300 px-3 py-1 rounded-full border border-red-500/30";
+      }
+    }
+
     async function loadAllData() {
-      const apiKey = "monacolisa_energy_api_2026";
       const start = document.getElementById('startDate').value;
       const end = document.getElementById('endDate').value;
       const btn = document.getElementById('btnFetch');
@@ -184,123 +251,125 @@
       btn.innerText = "Memuat Data...";
       btn.disabled = true;
 
-      // URL Endpoint API
-      const apiUrl = `https://monacolisa.fulindo.co.id/api/energy?api_key=${apiKey}&device_imei=860987054243453&tanggal=${start}&page=1&limit=${limit}`;
-      
+      const targetUrl = `https://unesaenergy.co.id/api/energy?api_key=${APP_API_KEY}&tanggal=${start}&page=1&limit=${limit}`;
+
       try {
-        const res = await corsfix.fetch(apiUrl);
+        const res = await corsfix.fetch(targetUrl);
         const json = await res.json();
         
         if (json.status === "success" && json.data) {
-          // 1. Set IMEI
           if (json.pagination && json.pagination.filter && json.pagination.filter.device_imei) {
             document.getElementById('imeiDisplay').innerText = json.pagination.filter.device_imei;
           } else if (json.data.length > 0) {
             document.getElementById('imeiDisplay').innerText = json.data[0].message_id.split('-')[0];
           }
 
-          // 2. URUTKAN DATA SCR KRONOLOGIS (lama ke baru)
           const rawData = [...json.data].reverse();
-
-          // Extraction arrays
           const timestamps = rawData.map(d => formatTimestamp(d.timestamp || d.sampled_at));
 
-          // 1. Tegangan
           const vA = rawData.map(d => d.measurement?.voltage_v?.a ?? 0);
           const vB = rawData.map(d => d.measurement?.voltage_v?.b ?? 0);
           const vC = rawData.map(d => d.measurement?.voltage_v?.c ?? 0);
 
-          // 2. Arus
           const iA = rawData.map(d => d.measurement?.current_a?.a ?? 0);
           const iB = rawData.map(d => d.measurement?.current_a?.b ?? 0);
           const iC = rawData.map(d => d.measurement?.current_a?.c ?? 0);
 
-          // 3. Daya Aktif per Fasa
           const pA = rawData.map(d => d.measurement?.active_power_w?.a ?? 0);
           const pB = rawData.map(d => d.measurement?.active_power_w?.b ?? 0);
           const pC = rawData.map(d => d.measurement?.active_power_w?.c ?? 0);
 
-          // 4. Total Daya Aktif
           const pTot = rawData.map(d => d.measurement?.active_power_w?.total ?? 0);
 
-          // 5. THD Tegangan
           const thdV_A = rawData.map(d => d.measurement?.thd_voltage_pct?.a ?? 0);
           const thdV_B = rawData.map(d => d.measurement?.thd_voltage_pct?.b ?? 0);
           const thdV_C = rawData.map(d => d.measurement?.thd_voltage_pct?.c ?? 0);
 
-          // 6. THD Arus
           const thdI_A = rawData.map(d => d.measurement?.thd_current_pct?.a ?? 0);
           const thdI_B = rawData.map(d => d.measurement?.thd_current_pct?.b ?? 0);
           const thdI_C = rawData.map(d => d.measurement?.thd_current_pct?.c ?? 0);
 
-          // 7. Power Factor Total
           const pfTot = rawData.map(d => d.measurement?.power_factor?.total ?? 0);
 
-          // RENDER SEMUA GRAFIK SEBAGAI LINE GRAPH
-          // 1. Tegangan
+          // Render Charts
           createOrUpdateChart('chartVoltage', timestamps, [
             { label: 'Phase A (V)', data: vA, borderColor: COLOR_A, backgroundColor: COLOR_A, tension: 0.2 },
             { label: 'Phase B (V)', data: vB, borderColor: COLOR_B, backgroundColor: COLOR_B, tension: 0.2 },
             { label: 'Phase C (V)', data: vC, borderColor: COLOR_C, backgroundColor: COLOR_C, tension: 0.2 }
           ]);
 
-          // 2. Arus
           createOrUpdateChart('chartCurrent', timestamps, [
             { label: 'Phase A (A)', data: iA, borderColor: COLOR_A, backgroundColor: COLOR_A, tension: 0.2 },
             { label: 'Phase B (A)', data: iB, borderColor: COLOR_B, backgroundColor: COLOR_B, tension: 0.2 },
             { label: 'Phase C (A)', data: iC, borderColor: COLOR_C, backgroundColor: COLOR_C, tension: 0.2 }
           ]);
 
-          // 3. Daya Aktif Fasa
           createOrUpdateChart('chartActivePowerPhase', timestamps, [
             { label: 'Phase A (W)', data: pA, borderColor: COLOR_A, backgroundColor: COLOR_A, tension: 0.2 },
             { label: 'Phase B (W)', data: pB, borderColor: COLOR_B, backgroundColor: COLOR_B, tension: 0.2 },
             { label: 'Phase C (W)', data: pC, borderColor: COLOR_C, backgroundColor: COLOR_C, tension: 0.2 }
           ]);
 
-          // 4. Total Daya Aktif
           createOrUpdateChart('chartActivePowerTotal', timestamps, [
             { label: 'Total Active Power (W)', data: pTot, borderColor: COLOR_TOT, backgroundColor: COLOR_TOT, tension: 0.2 }
           ]);
 
-          // 5. THD Tegangan
           createOrUpdateChart('chartThdVoltage', timestamps, [
             { label: 'THD Voltage Phase A (%)', data: thdV_A, borderColor: COLOR_A, backgroundColor: COLOR_A, tension: 0.2 },
             { label: 'THD Voltage Phase B (%)', data: thdV_B, borderColor: COLOR_B, backgroundColor: COLOR_B, tension: 0.2 },
             { label: 'THD Voltage Phase C (%)', data: thdV_C, borderColor: COLOR_C, backgroundColor: COLOR_C, tension: 0.2 }
           ]);
 
-          // 6. THD Arus
           createOrUpdateChart('chartThdCurrent', timestamps, [
             { label: 'THD Current Phase A (%)', data: thdI_A, borderColor: COLOR_A, backgroundColor: COLOR_A, tension: 0.2 },
             { label: 'THD Current Phase B (%)', data: thdI_B, borderColor: COLOR_B, backgroundColor: COLOR_B, tension: 0.2 },
             { label: 'THD Current Phase C (%)', data: thdI_C, borderColor: COLOR_C, backgroundColor: COLOR_C, tension: 0.2 }
           ]);
 
-          // 7. Power Factor Total
           createOrUpdateChart('chartPowerFactor', timestamps, [
             { label: 'Power Factor Total', data: pfTot, borderColor: COLOR_TOT, backgroundColor: COLOR_TOT, tension: 0.2 }
           ]);
 
           document.getElementById('lastUpdated').innerText = `Terakhir diperbarui: ${new Date().toLocaleTimeString('id-ID')}`;
+
+          // Ambil sampel data ringkas (maksimal 50 titik data terakhir/representatif) untuk dikirim ke Gemini AI agar tidak melebihi token limit
+          const sampleStep = Math.max(1, Math.floor(rawData.length / 30));
+          const summarySample = [];
+          for (let i = 0; i < rawData.length; i += sampleStep) {
+            summarySample.push({
+              time: timestamps[i],
+              v: rawData[i].measurement?.voltage_v,
+              i: rawData[i].measurement?.current_a,
+              p_tot: rawData[i].measurement?.active_power_w?.total,
+              thd_v: rawData[i].measurement?.thd_voltage_pct,
+              thd_i: rawData[i].measurement?.thd_current_pct,
+              pf: rawData[i].measurement?.power_factor?.total
+            });
+          }
+
+          // Panggil fungsi Analisis AI
+          generateAIAnalysis({
+            total_records: rawData.length,
+            sampled_data: summarySample
+          });
+
         } else {
           alert("Gagal mengambil data dari API: " + (json.message || "Data tidak valid"));
         }
       } catch (err) {
         console.error("Error fetching telemetry data:", err);
-        alert("Terjadi kesalahan koneksi atau CORS saat mengambil data dari API.");
+        alert("Terjadi kesalahan saat mengambil data.");
       } finally {
-        btn.innerText = "Tampilkan Data";
+        btn.innerText = "Tampilkan Data & Analisis AI";
         btn.disabled = false;
       }
     }
 
-    // Auto Refresh tiap 10 menit (600.000 ms)
+    // Auto Refresh tiap 10 menit
     setInterval(() => {
       loadAllData();
     }, 600000);
 
-    // Load awal saat halaman dibuka
     window.onload = loadAllData;
   </script>
 </body>
