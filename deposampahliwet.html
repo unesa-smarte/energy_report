@@ -11,7 +11,7 @@
   <!-- Corsfix CDN -->
   <script src="https://unpkg.com/corsfix"></script>
   <!-- ini tabel -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
 
   <style>
   /* Styling otomatis untuk tabel hasil render Markdown di dalam kotak AI */
@@ -219,6 +219,7 @@
     }
 
     // Fungsi untuk memanggil Google Gemini API
+// Fungsi untuk memanggil Google Gemini API
     async function generateAIAnalysis(summaryDataJson) {
       const aiStatus = document.getElementById('aiStatus');
       const aiContent = document.getElementById('aiContent');
@@ -227,9 +228,8 @@
       aiStatus.className = "text-xs bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full border border-yellow-500/30";
       aiContent.innerHTML = `<span class="animate-pulse text-slate-400">AI sedang memproses data telemetri berdasarkan standar IEEE 519 & IEC 61000...</span>`;
 
-      const GEMINI_API_KEY = getGeminiApiKey();
-      // Menggunakan model gemini-2.5-flash yang cepat dan efisien
-      const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+      const activeApiKey = getGeminiApiKey();
+      const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${activeApiKey}`;
 
       const promptText = `
 Anda adalah seorang Ahli Sistem Tenaga Listrik dan Power Quality Engineer. 
@@ -256,10 +256,6 @@ Berikan kalimat pengantar singkat di bagian atas tabel, dan pastikan tabel menca
         
         if (result.candidates && result.candidates[0].content.parts[0].text) {
           const aiText = result.candidates[0].content.parts[0].text;
-          // Ubah baris baru teks markdown sederhana menjadi HTML line breaks
-          // aiContent.innerHTML = aiText.replace(/\n/g, '<br>');
-          if (result.candidates && result.candidates[0].content.parts[0].text) {
-          const aiText = result.candidates[0].content.parts[0].text;
           
           // Menggunakan marked.js untuk merender Markdown (termasuk tabel) menjadi HTML
           aiContent.innerHTML = marked.parse(aiText);
@@ -267,8 +263,9 @@ Berikan kalimat pengantar singkat di bagian atas tabel, dan pastikan tabel menca
           aiStatus.innerText = "Analisis Selesai";
           aiStatus.className = "text-xs bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full border border-emerald-500/30";
         } else {
-          throw new Error("Format respons Gemini tidak valid.");
+          throw new Error("Format respons Gemini tidak valid atau kosong.");
         }
+
       } catch (err) {
         console.error("AI Error:", err);
         aiContent.innerText = "Gagal memuat analisis AI. Pastikan Gemini API Key valid.";
