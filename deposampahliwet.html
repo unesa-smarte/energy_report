@@ -309,9 +309,14 @@ async function loadAllData() {
       return;
     }
 
-    // Urutkan data berdasarkan waktu (kronologis dari yang terlama ke terbaru)
-    // Sesuai format API Unesa, biasanya data dibalik (.reverse()) jika ingin urut dari pagi ke malam
-    const rawData = [...allCombinedRawData].reverse();
+    // KODE BARU (PERBAIKAN URUTAN TANGGAL):
+    // Karena API Unesa atau hasil looping per hari mungkin sudah berurutan dari yang paling tua ke baru,
+    // kita pastikan dengan mengurutkan berdasarkan timestamp secara ascending (tertua ke terbaru).
+    const rawData = allCombinedRawData.sort((a, b) => {
+        const timeA = a.timestamp || a.sampled_at || "";
+        const timeB = b.timestamp || b.sampled_at || "";
+        return timeA.localeCompare(timeB);
+    });
     
     const timestamps = rawData.map(d => formatTimestamp(d.timestamp || d.sampled_at));
 
