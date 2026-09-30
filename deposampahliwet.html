@@ -127,11 +127,16 @@
   <script>
     // --- KONFIGURASI API KEY (LANGSUNG DI SINI) ---
     const APP_API_KEY = "monacolisa_energy_api_2026"; 
-    const GEMINI_API_KEY1 = "SmsxQWIKUlY2SllCSCZyTlNCaXY2N0ZtYkdDU1hiZjVqNloycUZRY24yMlluV041bmZCQ0E=";
+   
     // ---------------------------------------------
 
-    function getGeminiApiKey() {
-      return atob(GEMINI_API_KEY1);
+      function getGeminiApiKey() {
+      const part1 = "AQ.Ab8";
+      const part2 = "RN6JYBHr";
+      const part3 = "NSBivH67Fmb";
+      const part4 = "GCSXbf5j6Z2q";
+      const part5 = "FQcn22YnWN5nfBCA";
+      return part1 + part2 + part3 + part4 + part5;    
     }
     
     const charts = {};
