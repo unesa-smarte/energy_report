@@ -237,8 +237,6 @@ Berikut adalah ringkasan data telemetri power meter 3-fase dalam format JSON:
 ${JSON.stringify(summaryDataJson)}
 
 Tolong buatkan laporan analisis kehandalan dan kualitas daya listrik dalam **Bahasa Indonesia**.
-Dilarang keras menampilkan variabel dari rumus pada koding seperti contoh $V_{nominal}$ agar tampilan tidak membingungkan
-Tuliskan angka dan huruf sesuai dengan laporan teknis pada umumnya.
 Berikan pengantar diatas bahwa laporan ini dibuat oleh divisi Smart Energy - USSC Unesa Surabaya.
 Format utama jawaban Anda WAJIB berupa sebuah tabel Markdown yang rapi dengan kolom persis seperti berikut:
 | Aspek | IEEE 519 | IEC 61000 | Status |
@@ -247,6 +245,10 @@ Berikan kalimat pengantar singkat di bagian atas tabel dan pastikan tabel mencak
 Pada bagian akhir laporan terdapat 2 item penutup yaitu :
 1. kesimpulan dari pengukuran kualitas kelistrikan 
 2. saran untuk perbaikan jika hasil kesimpulan kualitas kelistrikan dibawah standar
+
+INSTRUKSI PENTING PENULISAN:
+- JANGAN PERNAH menggunakan simbol dolar ($), backtick ganda, atau format LaTeX/MathJax untuk membungkus angka, satuan persen (%), atau variabel apa pun. 
+- Tuliskan angka dan satuan secara natural (Contoh: tulis "Maksimal 8%" atau "< 5%", BUKAN "$8%$" atau "$< 5\%$").
       `;
 
       try {
