@@ -238,133 +238,178 @@ Gunakan format teks rapi dengan poin-poin yang jelas dan mudah dibaca.
       }
     }
 
-    async function loadAllData() {
-      const start = document.getElementById('startDate').value;
-      const end = document.getElementById('endDate').value;
-      const btn = document.getElementById('btnFetch');
+async function loadAllData() {
+  const startDateStr = document.getElementById('startDate').value;
+  const endDateStr = document.getElementById('endDate').value;
+  const btn = document.getElementById('btnFetch');
 
-      if (!start || !end) {
-        alert("Pilih tanggal mulai dan selesai terlebih dahulu.");
-        return;
-      }
+  if (!startDateStr || !endDateStr) {
+    alert("Pilih tanggal mulai dan tanggal selesai terlebih dahulu.");
+    return;
+  }
 
-      const limit = calculateLimit(start, end);
-      btn.innerText = "Memuat Data...";
-      btn.disabled = true;
+  const start = new Date(startDateStr);
+  const end = new Date(endDateStr);
 
-      const targetUrl = `https://monacolisa.fulindo.co.id/api/energy?api_key=${APP_API_KEY}&tanggal=${start}&page=1&limit=${limit}`;
+  if (start > end) {
+    alert("Tanggal mulai tidak boleh lebih besar dari tanggal selesai.");
+    return;
+  }
+
+  btn.innerText = "Memuat Data Multi-Hari...";
+  btn.disabled = true;
+
+  let allCombinedRawData = [];
+  let detectedImei = "-";
+
+  // Loop dari tanggal mulai sampai tanggal selesai (per 1 hari)
+  let currentDate = new Date(start);
+  
+  try {
+    while (currentDate <= end) {
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const day = String(currentDate.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
+
+      // 96 data poin per hari (interval 15 menit)
+      const limitPerDay = 96; 
+      const targetUrl = `https://monacolisa.fulindo.co.id/api/energy?api_key=${APP_API_KEY}&tanggal=${dateString}&page=1&limit=${limitPerDay}`;
+
+      console.log(`Mengambil data untuk tanggal: ${dateString}`);
 
       try {
         const res = await corsfix.fetch(targetUrl);
         const json = await res.json();
-        
-        if (json.status === "success" && json.data) {
-          if (json.pagination && json.pagination.filter && json.pagination.filter.device_imei) {
-            document.getElementById('imeiDisplay').innerText = json.pagination.filter.device_imei;
-          } else if (json.data.length > 0) {
-            document.getElementById('imeiDisplay').innerText = json.data[0].message_id.split('-')[0];
+
+        if (json.status === "success" && json.data && json.data.length > 0) {
+          // Ambil IMEI jika belum tertangkap
+          if (detectedImei === "-") {
+            if (json.pagination && json.pagination.filter && json.pagination.filter.device_imei) {
+              detectedImei = json.pagination.filter.device_imei;
+            } else {
+              detectedImei = json.data[0].message_id.split('-')[0];
+            }
           }
-
-          const rawData = [...json.data].reverse();
-          const timestamps = rawData.map(d => formatTimestamp(d.timestamp || d.sampled_at));
-
-          const vA = rawData.map(d => d.measurement?.voltage_v?.a ?? 0);
-          const vB = rawData.map(d => d.measurement?.voltage_v?.b ?? 0);
-          const vC = rawData.map(d => d.measurement?.voltage_v?.c ?? 0);
-
-          const iA = rawData.map(d => d.measurement?.current_a?.a ?? 0);
-          const iB = rawData.map(d => d.measurement?.current_a?.b ?? 0);
-          const iC = rawData.map(d => d.measurement?.current_a?.c ?? 0);
-
-          const pA = rawData.map(d => d.measurement?.active_power_w?.a ?? 0);
-          const pB = rawData.map(d => d.measurement?.active_power_w?.b ?? 0);
-          const pC = rawData.map(d => d.measurement?.active_power_w?.c ?? 0);
-
-          const pTot = rawData.map(d => d.measurement?.active_power_w?.total ?? 0);
-
-          const thdV_A = rawData.map(d => d.measurement?.thd_voltage_pct?.a ?? 0);
-          const thdV_B = rawData.map(d => d.measurement?.thd_voltage_pct?.b ?? 0);
-          const thdV_C = rawData.map(d => d.measurement?.thd_voltage_pct?.c ?? 0);
-
-          const thdI_A = rawData.map(d => d.measurement?.thd_current_pct?.a ?? 0);
-          const thdI_B = rawData.map(d => d.measurement?.thd_current_pct?.b ?? 0);
-          const thdI_C = rawData.map(d => d.measurement?.thd_current_pct?.c ?? 0);
-
-          const pfTot = rawData.map(d => d.measurement?.power_factor?.total ?? 0);
-
-          // Render Charts
-          createOrUpdateChart('chartVoltage', timestamps, [
-            { label: 'Phase A (V)', data: vA, borderColor: COLOR_A, backgroundColor: COLOR_A, tension: 0.2 },
-            { label: 'Phase B (V)', data: vB, borderColor: COLOR_B, backgroundColor: COLOR_B, tension: 0.2 },
-            { label: 'Phase C (V)', data: vC, borderColor: COLOR_C, backgroundColor: COLOR_C, tension: 0.2 }
-          ]);
-
-          createOrUpdateChart('chartCurrent', timestamps, [
-            { label: 'Phase A (A)', data: iA, borderColor: COLOR_A, backgroundColor: COLOR_A, tension: 0.2 },
-            { label: 'Phase B (A)', data: iB, borderColor: COLOR_B, backgroundColor: COLOR_B, tension: 0.2 },
-            { label: 'Phase C (A)', data: iC, borderColor: COLOR_C, backgroundColor: COLOR_C, tension: 0.2 }
-          ]);
-
-          createOrUpdateChart('chartActivePowerPhase', timestamps, [
-            { label: 'Phase A (W)', data: pA, borderColor: COLOR_A, backgroundColor: COLOR_A, tension: 0.2 },
-            { label: 'Phase B (W)', data: pB, borderColor: COLOR_B, backgroundColor: COLOR_B, tension: 0.2 },
-            { label: 'Phase C (W)', data: pC, borderColor: COLOR_C, backgroundColor: COLOR_C, tension: 0.2 }
-          ]);
-
-          createOrUpdateChart('chartActivePowerTotal', timestamps, [
-            { label: 'Total Active Power (W)', data: pTot, borderColor: COLOR_TOT, backgroundColor: COLOR_TOT, tension: 0.2 }
-          ]);
-
-          createOrUpdateChart('chartThdVoltage', timestamps, [
-            { label: 'THD Voltage Phase A (%)', data: thdV_A, borderColor: COLOR_A, backgroundColor: COLOR_A, tension: 0.2 },
-            { label: 'THD Voltage Phase B (%)', data: thdV_B, borderColor: COLOR_B, backgroundColor: COLOR_B, tension: 0.2 },
-            { label: 'THD Voltage Phase C (%)', data: thdV_C, borderColor: COLOR_C, backgroundColor: COLOR_C, tension: 0.2 }
-          ]);
-
-          createOrUpdateChart('chartThdCurrent', timestamps, [
-            { label: 'THD Current Phase A (%)', data: thdI_A, borderColor: COLOR_A, backgroundColor: COLOR_A, tension: 0.2 },
-            { label: 'THD Current Phase B (%)', data: thdI_B, borderColor: COLOR_B, backgroundColor: COLOR_B, tension: 0.2 },
-            { label: 'THD Current Phase C (%)', data: thdI_C, borderColor: COLOR_C, backgroundColor: COLOR_C, tension: 0.2 }
-          ]);
-
-          createOrUpdateChart('chartPowerFactor', timestamps, [
-            { label: 'Power Factor Total', data: pfTot, borderColor: COLOR_TOT, backgroundColor: COLOR_TOT, tension: 0.2 }
-          ]);
-
-          document.getElementById('lastUpdated').innerText = `Terakhir diperbarui: ${new Date().toLocaleTimeString('id-ID')}`;
-
-          // Ambil sampel data ringkas (maksimal 50 titik data terakhir/representatif) untuk dikirim ke Gemini AI agar tidak melebihi token limit
-          const sampleStep = Math.max(1, Math.floor(rawData.length / 30));
-          const summarySample = [];
-          for (let i = 0; i < rawData.length; i += sampleStep) {
-            summarySample.push({
-              time: timestamps[i],
-              v: rawData[i].measurement?.voltage_v,
-              i: rawData[i].measurement?.current_a,
-              p_tot: rawData[i].measurement?.active_power_w?.total,
-              thd_v: rawData[i].measurement?.thd_voltage_pct,
-              thd_i: rawData[i].measurement?.thd_current_pct,
-              pf: rawData[i].measurement?.power_factor?.total
-            });
-          }
-
-          // Panggil fungsi Analisis AI
-          generateAIAnalysis({
-            total_records: rawData.length,
-            sampled_data: summarySample
-          });
-
-        } else {
-          alert("Gagal mengambil data dari API: " + (json.message || "Data tidak valid"));
+          // Gabungkan data hari ini ke array utama
+          allCombinedRawData = allCombinedRawData.concat(json.data);
         }
-      } catch (err) {
-        console.error("Error fetching telemetry data:", err);
-        alert("Terjadi kesalahan saat mengambil data.");
-      } finally {
-        btn.innerText = "Tampilkan Data & Analisis AI";
-        btn.disabled = false;
+      } catch (dayErr) {
+        console.warn(`Gagal mengambil data tanggal ${dateString}:`, dayErr);
       }
+
+      // Geser ke hari berikutnya (+1 hari)
+      currentDate.setDate(currentDate.getDate() + 1);
     }
+
+    document.getElementById('imeiDisplay').innerText = detectedImei;
+
+    if (allCombinedRawData.length === 0) {
+      alert("Tidak ada data ditemukan untuk rentang tanggal tersebut.");
+      return;
+    }
+
+    // Urutkan data berdasarkan waktu (kronologis dari yang terlama ke terbaru)
+    // Sesuai format API Unesa, biasanya data dibalik (.reverse()) jika ingin urut dari pagi ke malam
+    const rawData = [...allCombinedRawData].reverse();
+    
+    const timestamps = rawData.map(d => formatTimestamp(d.timestamp || d.sampled_at));
+
+    const vA = rawData.map(d => d.measurement?.voltage_v?.a ?? 0);
+    const vB = rawData.map(d => d.measurement?.voltage_v?.b ?? 0);
+    const vC = rawData.map(d => d.measurement?.voltage_v?.c ?? 0);
+
+    const iA = rawData.map(d => d.measurement?.current_a?.a ?? 0);
+    const iB = rawData.map(d => d.measurement?.current_a?.b ?? 0);
+    const iC = rawData.map(d => d.measurement?.current_a?.c ?? 0);
+
+    const pA = rawData.map(d => d.measurement?.active_power_w?.a ?? 0);
+    const pB = rawData.map(d => d.measurement?.active_power_w?.b ?? 0);
+    const pC = rawData.map(d => d.measurement?.active_power_w?.c ?? 0);
+
+    const pTot = rawData.map(d => d.measurement?.active_power_w?.total ?? 0);
+
+    const thdV_A = rawData.map(d => d.measurement?.thd_voltage_pct?.a ?? 0);
+    const thdV_B = rawData.map(d => d.measurement?.thd_voltage_pct?.b ?? 0);
+    const thdV_C = rawData.map(d => d.measurement?.thd_voltage_pct?.c ?? 0);
+
+    const thdI_A = rawData.map(d => d.measurement?.thd_current_pct?.a ?? 0);
+    const thdI_B = rawData.map(d => d.measurement?.thd_current_pct?.b ?? 0);
+    const thdI_C = rawData.map(d => d.measurement?.thd_current_pct?.c ?? 0);
+
+    const pfTot = rawData.map(d => d.measurement?.power_factor?.total ?? 0);
+
+    // Render Charts
+    createOrUpdateChart('chartVoltage', timestamps, [
+      { label: 'Phase A (V)', data: vA, borderColor: COLOR_A, backgroundColor: COLOR_A, tension: 0.2 },
+      { label: 'Phase B (V)', data: vB, borderColor: COLOR_B, backgroundColor: COLOR_B, tension: 0.2 },
+      { label: 'Phase C (V)', data: vC, borderColor: COLOR_C, backgroundColor: COLOR_C, tension: 0.2 }
+    ]);
+
+    createOrUpdateChart('chartCurrent', timestamps, [
+      { label: 'Phase A (A)', data: iA, borderColor: COLOR_A, backgroundColor: COLOR_A, tension: 0.2 },
+      { label: 'Phase B (A)', data: iB, borderColor: COLOR_B, backgroundColor: COLOR_B, tension: 0.2 },
+      { label: 'Phase C (A)', data: iC, borderColor: COLOR_C, backgroundColor: COLOR_C, tension: 0.2 }
+    ]);
+
+    createOrUpdateChart('chartActivePowerPhase', timestamps, [
+      { label: 'Phase A (W)', data: pA, borderColor: COLOR_A, backgroundColor: COLOR_A, tension: 0.2 },
+      { label: 'Phase B (W)', data: pB, borderColor: COLOR_B, backgroundColor: COLOR_B, tension: 0.2 },
+      { label: 'Phase C (W)', data: pC, borderColor: COLOR_C, backgroundColor: COLOR_C, tension: 0.2 }
+    ]);
+
+    createOrUpdateChart('chartActivePowerTotal', timestamps, [
+      { label: 'Total Active Power (W)', data: pTot, borderColor: COLOR_TOT, backgroundColor: COLOR_TOT, tension: 0.2 }
+    ]);
+
+    createOrUpdateChart('chartThdVoltage', timestamps, [
+      { label: 'THD Voltage Phase A (%)', data: thdV_A, borderColor: COLOR_A, backgroundColor: COLOR_A, tension: 0.2 },
+      { label: 'THD Voltage Phase B (%)', data: thdV_B, borderColor: COLOR_B, backgroundColor: COLOR_B, tension: 0.2 },
+      { label: 'THD Voltage Phase C (%)', data: thdV_C, borderColor: COLOR_C, backgroundColor: COLOR_C, tension: 0.2 }
+    ]);
+
+    createOrUpdateChart('chartThdCurrent', timestamps, [
+      { label: 'THD Current Phase A (%)', data: thdI_A, borderColor: COLOR_A, backgroundColor: COLOR_A, tension: 0.2 },
+      { label: 'THD Current Phase B (%)', data: thdI_B, borderColor: COLOR_B, backgroundColor: COLOR_B, tension: 0.2 },
+      { label: 'THD Current Phase C (%)', data: thdI_C, borderColor: COLOR_C, backgroundColor: COLOR_C, tension: 0.2 }
+    ]);
+
+    createOrUpdateChart('chartPowerFactor', timestamps, [
+      { label: 'Power Factor Total', data: pfTot, borderColor: COLOR_TOT, backgroundColor: COLOR_TOT, tension: 0.2 }
+    ]);
+
+    document.getElementById('lastUpdated').innerText = `Terakhir diperbarui: ${new Date().toLocaleTimeString('id-ID')} (${rawData.length} data poin)`;
+
+    // Sampel data untuk dikirim ke Gemini AI (ambil maksimal 60 titik secara merata agar tidak overload token)
+    const sampleStep = Math.max(1, Math.floor(rawData.length / 50));
+    const summarySample = [];
+    for (let i = 0; i < rawData.length; i += sampleStep) {
+      summarySample.push({
+        time: timestamps[i],
+        v: rawData[i].measurement?.voltage_v,
+        i: rawData[i].measurement?.current_a,
+        p_tot: rawData[i].measurement?.active_power_w?.total,
+        thd_v: rawData[i].measurement?.thd_voltage_pct,
+        thd_i: rawData[i].measurement?.thd_current_pct,
+        pf: rawData[i].measurement?.power_factor?.total
+      });
+    }
+
+    // Panggil Analisis AI
+    generateAIAnalysis({
+      total_days_analyzed: Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1,
+      total_records: rawData.length,
+      sampled_data: summarySample
+    });
+
+  } catch (err) {
+    console.error("Error fetching multi-day data:", err);
+    alert("Terjadi kesalahan saat menarik data multi-hari.");
+  } finally {
+    btn.innerText = "Tampilkan Data & Analisis AI";
+    btn.disabled = false;
+  }
+}
 
     // Auto Refresh tiap 10 menit
     setInterval(() => {
