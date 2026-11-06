@@ -1,0 +1,58 @@
+[    
+   {
+        "File Name": "FK.pdf",
+        "ID Pelanggan": "511620304933",
+        "Nama Pelanggan": "GEDUNG CPD UNESA",
+        "Gol": "S2",
+        "Tarif": "865000VA",
+        "Total Tagihan": 100181603,
+        "kWh LWBP": 112459,
+        "Tarif LWBP": 735.0,
+        "kWh WBP": 15895,
+        "Tarif WBP": 1102.5,
+        "kVArh": 0,
+        "Tarif kVArh": 925.0
+    },
+    {
+        "File Name": "invoice-rekening-listrik-511620087202-202611-.pdf",
+        "ID Pelanggan": "511620087202",
+        "Nama Pelanggan": "SPORT SCIENCE",
+        "Gol": "S1",
+        "Tarif": "197000VA",
+        "Total Tagihan": 10059300,
+        "kWh LWBP": 11177,
+        "Tarif LWBP": 900.0,
+        "kWh WBP": 0,
+        "Tarif WBP": 0.0,
+        "kVArh": 0,
+        "Tarif kVArh": 0.0
+    },
+    {
+        "File Name": "invoice-rekening-listrik-511620126643-202611-.pdf",
+        "ID Pelanggan": "511620126643",
+        "Nama Pelanggan": "UNESA GED PENDIDIKAN",
+        "Gol": "S2",
+        "Tarif": "1110000VA",
+        "Total Tagihan": 133063665,
+        "kWh LWBP": 151174,
+        "Tarif LWBP": 735.0,
+        "kWh WBP": 19910,
+        "Tarif WBP": 1102.5,
+        "kVArh": 0,
+        "Tarif kVArh": 925.0
+    },
+    {
+        "File Name": "invoice-rekening-listrik-511620446071-202611-.pdf",
+        "ID Pelanggan": "511620446071",
+        "Nama Pelanggan": "FIKK GEDUNG U1/U2",
+        "Gol": "S1",
+        "Tarif": "197000VA",
+        "Total Tagihan": 61338600,
+        "kWh LWBP": 68154,
+        "Tarif LWBP": 900.0,
+        "kWh WBP": 0,
+        "Tarif WBP": 0.0,
+        "kVArh": 0,
+        "Tarif kVArh": 0.0
+    }
+]
